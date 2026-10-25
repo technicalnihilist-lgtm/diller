@@ -20,7 +20,7 @@ public class AiConfig {
     public String baseUrl() { return p.getString("ai_base", "https://api.sarvam.ai"); }
     public void setBaseUrl(String v) { p.edit().putString("ai_base", v).apply(); }
 
-    public String model() { return p.getString("ai_model", "sarvam-m"); }
+    public String model() { return p.getString("ai_model", "sarvam-105b-conversations"); }
     public void setModel(String v) { p.edit().putString("ai_model", v).apply(); }
 
     public boolean hasKey() {

@@ -5,7 +5,7 @@
 No ads. No account. No sign-in. Everything runs on your phone — your calls, contacts and blocklist never leave the device.
 
 > ### ⬇️ [Download Diller.apk](https://github.com/technicalnihilist-lgtm/diller/releases/latest/download/Diller.apk)
-> Latest release — v3.0.0. Also available as a file in this repo: [`Diller.apk`](Diller.apk).
+> Latest release — v3.0.1. Also available as a file in this repo: [`Diller.apk`](Diller.apk).
 
 <p align="center">
   <img src="screenshots/keypad.png" width="200" alt="Keypad" />
@@ -19,6 +19,12 @@ No ads. No account. No sign-in. Everything runs on your phone — your calls, co
 </p>
 
 > Screenshots above are design renders of the current build (see `screenshots/device/` for real device photos of the earlier 1.0 build).
+
+## What's new in 3.0.1
+
+- **Fixed the AI model name** — the default was `sarvam-m`, which does not exist on Sarvam's API, so chat failed even with a valid key. Now `sarvam-105b-conversations`.
+- **Translation** now sends `model: mayura:v1`, matching Sarvam's `/translate` endpoint.
+- Verified against the live API: chat and translate both return 200.
 
 ## What's new in 3.0.0 — AI
 
@@ -106,7 +112,7 @@ The AI agent here therefore **answers and logs** the call; it cannot converse.
 Download **[Diller.apk](https://github.com/technicalnihilist-lgtm/diller/releases/latest/download/Diller.apk)**, copy it to your phone, and tap it. Allow *"install from this source"* when Android asks, then open Diller and grant the permissions.
 
 - Package: `com.diller.app`
-- Version: 3.0.0 (versionCode 13) · Min Android 8.0 (API 26) · Target Android 14 (API 34)
+- Version: 3.0.1 (versionCode 14) · Min Android 8.0 (API 26) · Target Android 14 (API 34)
 - Signed with APK Signature Scheme v2 + v3 (self-signed — not a Play Store listing).
 
 ## Making Diller your default Phone app (needed for the call screen)

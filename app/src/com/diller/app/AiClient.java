@@ -85,6 +85,7 @@ public class AiClient {
             body.put("input", text);
             body.put("source_language_code", "auto");
             body.put("target_language_code", target);
+            body.put("model", "mayura:v1");
             JSONObject res = postJson(base + "/translate", body);
             String t = res.optString("translated_text", "");
             if (!t.isEmpty()) return t;
