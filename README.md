@@ -5,19 +5,26 @@
 No ads. No account. No sign-in. Everything runs on your phone — your calls, contacts and blocklist never leave the device.
 
 > ### ⬇️ [Download Diller.apk](https://github.com/technicalnihilist-lgtm/diller/releases/latest/download/Diller.apk)
-> Latest release — v2.1.0. Also available as a file in this repo: [`Diller.apk`](Diller.apk).
+> Latest release — v2.2.0. Also available as a file in this repo: [`Diller.apk`](Diller.apk).
 
 <p align="center">
-  <img src="screenshots/keypad.png" width="220" alt="Keypad" />
-  <img src="screenshots/calls.png" width="220" alt="Calls" />
-  <img src="screenshots/contacts.png" width="220" alt="Contacts" />
+  <img src="screenshots/keypad.png" width="200" alt="Keypad" />
+  <img src="screenshots/calls.png" width="200" alt="Calls" />
+  <img src="screenshots/contacts.png" width="200" alt="Contacts" />
 </p>
 <p align="center">
-  <img src="screenshots/shield.png" width="220" alt="Shield" />
-  <img src="screenshots/call-screen.png" width="220" alt="Liquid-glass call screen" />
+  <img src="screenshots/add-contact.png" width="200" alt="Add contact" />
+  <img src="screenshots/shield.png" width="200" alt="Shield" />
+  <img src="screenshots/call-screen.png" width="200" alt="Liquid-glass call screen" />
 </p>
 
 > Screenshots above are design renders of the current build (see `screenshots/device/` for real device photos of the earlier 1.0 build).
+
+## What's new in 2.2.0
+
+- **Speaker & volume fixed.** The Speaker button now changes the real call audio route (via the Telecom `InCallService`), not just the deprecated system flag — so it actually switches to loudspeaker. Call volume is pushed to maximum when a call connects and when you enable speaker. Mute now uses the proper in-call mute too.
+- **Contacts built in.** Adding a contact opens a Diller dialog (name + number) and saves straight to the device — no bouncing out to another contacts app. There's a **+** button on the Contacts tab as well as the keypad's add button.
+- **Smaller, iOS-style dial pad.** Keys are now compact circles with generous spacing instead of edge-to-edge tiles.
 
 ## Features
 
@@ -25,6 +32,7 @@ No ads. No account. No sign-in. Everything runs on your phone — your calls, co
 - **Liquid-glass call screen** — a frosted, animated glass screen shown while you're on a call: contact, number, live call state (Calling… / Incoming call / running timer), a scam warning, Mute / Speaker, and a red hang-up. Works for incoming *and* outgoing calls.
 - **Scam & spam call screening** — a `CallScreeningService` inspects every incoming call on-device and warns you before you pick up. Suspicious callers are tagged red in the call list.
 - **Blocklist** — add numbers; blocked callers are rejected automatically.
+- **Built-in contact creation** — create contacts inside Diller.
 - **Theft Guard** — detects a SIM-card swap or repeated failed unlock attempts, sounds a loud alarm, and (with device-admin) can lock the device. Restarts after reboot.
 - **Missed-call filter**, search, and a clean call log.
 
@@ -33,7 +41,7 @@ No ads. No account. No sign-in. Everything runs on your phone — your calls, co
 Download **[Diller.apk](https://github.com/technicalnihilist-lgtm/diller/releases/latest/download/Diller.apk)**, copy it to your phone, and tap it. Allow *"install from this source"* when Android asks, then open Diller and grant the permissions.
 
 - Package: `com.diller.app`
-- Version: 2.1.0 (versionCode 3) · Min Android 8.0 (API 26) · Target Android 14 (API 34)
+- Version: 2.2.0 (versionCode 4) · Min Android 8.0 (API 26) · Target Android 14 (API 34)
 - Signed with APK Signature Scheme v2 + v3 (self-signed — not a Play Store listing).
 
 ## Making Diller your default Phone app (needed for the call screen)
@@ -74,7 +82,7 @@ app/AndroidManifest.xml
 app/res/…                        layouts, drawables, iOS theme, adaptive icon
 app/src/com/diller/app/
     MainActivity.java            tabs, keypad, calls, contacts, shield, roles, banner
-    InCallActivity.java          liquid-glass call screen (state + timer + mute/speaker)
+    InCallActivity.java          liquid-glass call screen (state + timer + audio routing)
     DillerInCallService.java     InCallService — telecom bridge + full-screen fallback
     DillerScreeningService.java  CallScreeningService — scam/spam screening
     SpamEngine.java              on-device scoring + blocklist

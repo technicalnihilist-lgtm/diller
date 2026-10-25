@@ -6,6 +6,7 @@ import android.app.AlertDialog;
 import android.app.admin.DevicePolicyManager;
 import android.app.role.RoleManager;
 import android.content.ComponentName;
+import android.content.ContentProviderOperation;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -195,7 +196,7 @@ public class MainActivity extends Activity {
             lp.columnSpec = GridLayout.spec(i % 3, 1f);
             lp.width = 0;
             lp.height = 0;
-            lp.setMargins(dp(6), dp(6), dp(6), dp(6));
+            lp.setMargins(dp(14), dp(10), dp(14), dp(10));
 
             FrameLayout key = new FrameLayout(this);
             key.setLayoutParams(lp);
@@ -209,7 +210,7 @@ public class MainActivity extends Activity {
 
             TextView d = new TextView(this);
             d.setText(digits[i]);
-            d.setTextSize(TypedValue.COMPLEX_UNIT_SP, 33);
+            d.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
             d.setTextColor(WHITE);
             d.setGravity(Gravity.CENTER);
             inner.addView(d);
@@ -217,7 +218,7 @@ public class MainActivity extends Activity {
             if (subs[i].length() > 0) {
                 TextView s = new TextView(this);
                 s.setText(subs[i]);
-                s.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+                s.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
                 s.setTextColor(0xFF8E8E93);
                 s.setGravity(Gravity.CENTER);
                 s.setLetterSpacing(0.12f);
@@ -346,11 +347,80 @@ public class MainActivity extends Activity {
     }
 
     private void addContact(String number) {
-        Intent i = new Intent(Intent.ACTION_INSERT);
-        i.setType(ContactsContract.Contacts.CONTENT_TYPE);
-        if (number != null && !number.isEmpty())
-            i.putExtra(ContactsContract.Intents.Insert.PHONE, number);
-        try { startActivity(i); } catch (Exception e) { toast("No contacts app"); }
+        showNewContactDialog(number == null ? "" : number);
+    }
+
+    /** Create a contact inside Diller — no external contacts app involved. */
+    private void showNewContactDialog(String prefillNumber) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(22), dp(6), dp(22), 0);
+
+        final EditText nameIn = new EditText(this);
+        nameIn.setHint("Name");
+        nameIn.setSingleLine(true);
+        nameIn.setTextColor(WHITE);
+        nameIn.setHintTextColor(0xFF8E8E93);
+
+        final EditText numIn = new EditText(this);
+        numIn.setHint("Phone number");
+        numIn.setSingleLine(true);
+        numIn.setInputType(android.text.InputType.TYPE_CLASS_PHONE);
+        numIn.setText(prefillNumber);
+        numIn.setTextColor(WHITE);
+        numIn.setHintTextColor(0xFF8E8E93);
+
+        box.addView(nameIn);
+        box.addView(numIn);
+
+        new AlertDialog.Builder(this)
+                .setTitle("New contact")
+                .setView(box)
+                .setPositiveButton("Save", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dlg, int which) {
+                        String nm = nameIn.getText().toString().trim();
+                        String num = numIn.getText().toString().trim();
+                        if (nm.isEmpty() || num.isEmpty()) { toast("Name and number required"); return; }
+                        if (saveContact(nm, num)) {
+                            toast("Contact saved");
+                            if (current == 1) loadContacts(search == null ? "" : search.getText().toString());
+                            updateDisplay();
+                        } else {
+                            toast("Couldn't save — allow the Contacts permission");
+                        }
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private boolean saveContact(String name, String number) {
+        try {
+            ArrayList<ContentProviderOperation> ops = new ArrayList<>();
+            int raw = ops.size();
+            ops.add(ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
+                    .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, null)
+                    .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, null)
+                    .build());
+            ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                    .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, raw)
+                    .withValue(ContactsContract.Data.MIMETYPE,
+                            ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
+                    .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, name)
+                    .build());
+            ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                    .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, raw)
+                    .withValue(ContactsContract.Data.MIMETYPE,
+                            ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+                    .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, number)
+                    .withValue(ContactsContract.CommonDataKinds.Phone.TYPE,
+                            ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE)
+                    .build());
+            getContentResolver().applyBatch(ContactsContract.AUTHORITY, ops);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     // ---------------- calls ----------------
@@ -482,6 +552,10 @@ public class MainActivity extends Activity {
             public void onItemClick(android.widget.AdapterView<?> p, View v, int pos, long id) {
                 placeCall(contactsAdapter.items.get(pos).number);
             }
+        });
+        View addBtn = vContacts.findViewById(R.id.btn_new_contact);
+        if (addBtn != null) addBtn.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) { showNewContactDialog(""); }
         });
         search.addTextChangedListener(new TextWatcher() {
             public void beforeTextChanged(CharSequence s, int a, int b, int c) { }
@@ -737,7 +811,8 @@ public class MainActivity extends Activity {
     private void requestPerms() {
         List<String> need = new ArrayList<>();
         String[] all = {Manifest.permission.CALL_PHONE, Manifest.permission.READ_CALL_LOG,
-                Manifest.permission.READ_CONTACTS, Manifest.permission.READ_PHONE_STATE};
+                Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS,
+                Manifest.permission.READ_PHONE_STATE};
         for (String p : all)
             if (checkSelfPermission(p) != PackageManager.PERMISSION_GRANTED) need.add(p);
         if (Build.VERSION.SDK_INT >= 33

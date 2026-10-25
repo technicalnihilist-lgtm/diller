@@ -7,6 +7,7 @@ import android.media.AudioManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.telecom.Call;
+import android.telecom.CallAudioState;
 import android.telecom.VideoProfile;
 import android.view.View;
 import android.widget.ImageView;
@@ -29,6 +30,7 @@ public class InCallActivity extends Activity {
 
     private boolean muted = false;
     private boolean speakerOn = false;
+    private boolean volumeBoosted = false;
 
     public static void finishIfOpen() {
         if (open != null) {
@@ -78,20 +80,38 @@ public class InCallActivity extends Activity {
         mute.setOnClickListener(new View.OnClickListener() {
             public void onClick(View x) {
                 muted = !muted;
-                try {
-                    AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-                    if (am != null) am.setMicrophoneMute(muted);
-                } catch (Exception ignored) { }
+                boolean done = false;
+                if (DillerInCallService.instance != null) {
+                    try { DillerInCallService.instance.setMuted(muted); done = true; }
+                    catch (Exception ignored) { }
+                }
+                if (!done) {
+                    try {
+                        AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                        if (am != null) am.setMicrophoneMute(muted);
+                    } catch (Exception ignored) { }
+                }
                 mute.setColorFilter(muted ? 0xFF0A84FF : 0xFFFFFFFF);
             }
         });
         speaker.setOnClickListener(new View.OnClickListener() {
             public void onClick(View x) {
                 speakerOn = !speakerOn;
-                try {
-                    AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-                    if (am != null) am.setSpeakerphoneOn(speakerOn);
-                } catch (Exception ignored) { }
+                boolean routed = false;
+                if (DillerInCallService.instance != null) {
+                    try {
+                        DillerInCallService.instance.setAudioRoute(speakerOn
+                                ? CallAudioState.ROUTE_SPEAKER : CallAudioState.ROUTE_EARPIECE);
+                        routed = true;
+                    } catch (Exception ignored) { }
+                }
+                AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                if (am != null) {
+                    if (!routed) {
+                        try { am.setSpeakerphoneOn(speakerOn); } catch (Exception ignored) { }
+                    }
+                    if (speakerOn) boostCallVolume(am);
+                }
                 speaker.setColorFilter(speakerOn ? 0xFF0A84FF : 0xFFFFFFFF);
             }
         });
@@ -130,6 +150,13 @@ public class InCallActivity extends Activity {
         String num = intent.getStringExtra("number");
         if (num != null) bindNumber(num);
         refresh();
+    }
+
+    private void boostCallVolume(AudioManager am) {
+        try {
+            int max = am.getStreamMaxVolume(AudioManager.STREAM_VOICE_CALL);
+            am.setStreamVolume(AudioManager.STREAM_VOICE_CALL, max, 0);
+        } catch (Exception ignored) { }
     }
 
     private void endCall(boolean reject) {
@@ -174,6 +201,11 @@ public class InCallActivity extends Activity {
             case Call.STATE_ACTIVE:
                 showActiveLayout();
                 startTimer();
+                if (!volumeBoosted) {
+                    volumeBoosted = true;
+                    AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                    if (am != null) boostCallVolume(am);
+                }
                 break;
             case Call.STATE_HOLDING:
                 status.setText("On hold");

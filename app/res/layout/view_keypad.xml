@@ -3,8 +3,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:paddingStart="20dp"
-    android:paddingEnd="20dp">
+    android:paddingStart="30dp"
+    android:paddingEnd="30dp">
 
     <LinearLayout
         android:id="@+id/dialer_banner"
@@ -37,7 +37,7 @@
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="0.9"
+        android:layout_weight="1.0"
         android:minHeight="80dp">
 
         <LinearLayout
@@ -108,7 +108,7 @@
         android:id="@+id/keypad_grid"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="3.4" />
+        android:layout_weight="3.1" />
 
     <FrameLayout
         android:layout_width="match_parent"
