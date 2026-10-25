@@ -5,7 +5,7 @@
 No ads. No account. No sign-in. Everything runs on your phone — your calls, contacts and blocklist never leave the device.
 
 > ### ⬇️ [Download Diller.apk](https://github.com/technicalnihilist-lgtm/diller/releases/latest/download/Diller.apk)
-> Latest release — v2.4.0. Also available as a file in this repo: [`Diller.apk`](Diller.apk).
+> Latest release — v2.5.0. Also available as a file in this repo: [`Diller.apk`](Diller.apk).
 
 <p align="center">
   <img src="screenshots/keypad.png" width="200" alt="Keypad" />
@@ -19,6 +19,11 @@ No ads. No account. No sign-in. Everything runs on your phone — your calls, co
 </p>
 
 > Screenshots above are design renders of the current build (see `screenshots/device/` for real device photos of the earlier 1.0 build).
+
+## What's new in 2.5.0
+
+- **The tab bar now matches the liquid-glass reference.** All four tabs (Calls, Contacts, Keypad, Shield) live in **one floating glass pill**, and the selected tab sits in a **circular glass lens** that is larger than the bar and spills past its edges — with a **blue** icon and label, exactly like the video.
+- **Swipe to switch tabs.** Drag left/right anywhere on the screen (including on the bar itself) to move between Calls → Contacts → Keypad → Shield, with a slide animation. Vertical scrolling is unaffected, and a swipe started on a call/contact row still does call/delete.
 
 ## What's new in 2.4.0
 
@@ -46,6 +51,7 @@ No ads. No account. No sign-in. Everything runs on your phone — your calls, co
 - **Blocklist** — add numbers; blocked callers are rejected automatically.
 - **Built-in contact creation** — create contacts inside Diller.
 - **Swipe to call / delete** — swipe a row right to call, left to delete (calls or contacts).
+- **Swipe to switch tabs** — drag left/right on the screen or the bar.
 - **Theft Guard** — detects a SIM-card swap or repeated failed unlock attempts, sounds a loud alarm, and (with device-admin) can lock the device. Restarts after reboot.
 - **Missed-call filter**, search, and a clean call log.
 
@@ -54,7 +60,7 @@ No ads. No account. No sign-in. Everything runs on your phone — your calls, co
 Download **[Diller.apk](https://github.com/technicalnihilist-lgtm/diller/releases/latest/download/Diller.apk)**, copy it to your phone, and tap it. Allow *"install from this source"* when Android asks, then open Diller and grant the permissions.
 
 - Package: `com.diller.app`
-- Version: 2.4.0 (versionCode 7) · Min Android 8.0 (API 26) · Target Android 14 (API 34)
+- Version: 2.5.0 (versionCode 8) · Min Android 8.0 (API 26) · Target Android 14 (API 34)
 - Signed with APK Signature Scheme v2 + v3 (self-signed — not a Play Store listing).
 
 ## Making Diller your default Phone app (needed for the call screen)

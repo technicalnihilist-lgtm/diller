@@ -51,6 +51,7 @@ public class MainActivity extends Activity {
     private static final int RED = 0xFFFF453A;
 
     private FrameLayout content;
+    private SwipeTabHost root;
     private View navCalls, navContacts, navKeypad, navShield;
     private View vCalls, vContacts, vKeypad, vShield;
     private int current = 2; // Keypad by default, like the iOS Phone app
@@ -110,6 +111,17 @@ public class MainActivity extends Activity {
         navKeypad.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { showTab(2); } });
         navShield.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { showTab(3); } });
 
+        root = findViewById(R.id.root);
+        if (root != null) {
+            root.setListener(new SwipeTabHost.Listener() {
+                public void onSwipe(int dir) {
+                    int next = current + dir;
+                    if (next < 0) next = 0;
+                    if (next > 3) next = 3;
+                    if (next != current) showTab(next, dir);
+                }
+            });
+        }
         showTab(2);
         handleIntent(getIntent());
         requestPerms();
@@ -117,7 +129,9 @@ public class MainActivity extends Activity {
 
     // ---------------- tabs ----------------
 
-    private void showTab(int i) {
+    private void showTab(int i) { showTab(i, 0); }
+
+    private void showTab(int i, int dir) {
         current = i;
         View[] views = {vCalls, vContacts, vKeypad, vShield};
         for (int k = 0; k < views.length; k++)
@@ -126,6 +140,13 @@ public class MainActivity extends Activity {
         styleNav(navContacts, i == 1);
         styleNav(navKeypad, i == 2);
         styleNav(navShield, i == 3);
+        if (dir != 0) {
+            View in = views[i];
+            float w = getResources().getDisplayMetrics().widthPixels;
+            in.setTranslationX(dir * w * 0.20f);
+            in.setAlpha(0.35f);
+            in.animate().translationX(0f).alpha(1f).setDuration(190).start();
+        }
         if (i == 0) loadCalls();
         if (i == 1) loadContacts(search == null ? "" : search.getText().toString());
         if (i == 3) refreshShield();
@@ -134,24 +155,21 @@ public class MainActivity extends Activity {
     private void styleNav(View item, boolean sel) {
         if (!(item instanceof ViewGroup)) return;
         ViewGroup g = (ViewGroup) item;
-        if (g.getChildCount() >= 2) {
-            // liquid-glass capsule on the selected tab
-            item.setBackgroundResource(sel ? R.drawable.nav_bubble : 0);
-            item.animate().scaleX(sel ? 1.06f : 1f).scaleY(sel ? 1.06f : 1f)
-                    .setDuration(160).start();
-            tint(g.getChildAt(0), sel ? WHITE : 0x99FFFFFF);
-            View lb = g.getChildAt(1);
-            if (lb instanceof TextView) ((TextView) lb).setTextColor(sel ? WHITE : 0x99FFFFFF);
-        } else {
-            item.setBackgroundResource(R.drawable.glass_circle);
-            item.animate().scaleX(sel ? 1.06f : 1f).scaleY(sel ? 1.06f : 1f)
-                    .setDuration(160).start();
-            tint(g.getChildAt(0), sel ? WHITE : 0x99FFFFFF);
-        }
+        if (g.getChildCount() < 2) return;
+        // child 0 = the glass lens, child 1 = icon + label
+        g.getChildAt(0).setVisibility(sel ? View.VISIBLE : View.GONE);
+        tintAll(g.getChildAt(1), sel ? BLUE : 0xCCFFFFFF);
+        g.animate().scaleX(sel ? 1.04f : 1f).scaleY(sel ? 1.04f : 1f)
+                .setDuration(150).start();
     }
 
-    private void tint(View v, int color) {
-        if (v instanceof ImageView) ((ImageView) v).setColorFilter(color);
+    private void tintAll(View v, int color) {
+        if (v instanceof ImageView) { ((ImageView) v).setColorFilter(color); return; }
+        if (v instanceof TextView) { ((TextView) v).setTextColor(color); return; }
+        if (v instanceof ViewGroup) {
+            ViewGroup gg = (ViewGroup) v;
+            for (int i = 0; i < gg.getChildCount(); i++) tintAll(gg.getChildAt(i), color);
+        }
     }
 
     // ---------------- keypad ----------------

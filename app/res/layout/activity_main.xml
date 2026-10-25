@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.diller.app.SwipeTabHost xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@color/bg_black"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     android:paddingTop="34dp"
     android:paddingBottom="12dp">
 
@@ -17,49 +20,111 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
         android:clipChildren="false"
         android:clipToPadding="false"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
         android:paddingTop="8dp">
 
-        <LinearLayout
-            android:id="@+id/nav_bar"
-            android:layout_width="0dp"
-            android:layout_height="70dp"
-            android:layout_weight="1"
-            android:orientation="horizontal"
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="72dp"
+            android:background="@drawable/nav_bar_glass"
             android:clipChildren="false"
             android:clipToPadding="false"
-            android:background="@drawable/nav_bar_glass"
-            android:padding="5dp">
+            android:padding="4dp">
 
-            <LinearLayout android:id="@+id/tab_calls" style="@style/NavItem">
-                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_tab_recents" android:contentDescription="@string/tab_calls" />
-                <TextView style="@style/NavLabel" android:text="@string/tab_calls" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:clipChildren="false"
+                android:clipToPadding="false">
+
+                <FrameLayout android:id="@+id/tab_calls" style="@style/NavCell">
+                    <View
+                        android:layout_width="76dp"
+                        android:layout_height="76dp"
+                        android:layout_gravity="center"
+                        android:background="@drawable/nav_bubble_circle"
+                        android:visibility="gone" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="vertical"
+                        android:gravity="center">
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_tab_recents"
+                            android:contentDescription="@string/tab_calls" />
+                        <TextView style="@style/NavLabel" android:text="@string/tab_calls" />
+                    </LinearLayout>
+                </FrameLayout>
+
+                <FrameLayout android:id="@+id/tab_contacts" style="@style/NavCell">
+                    <View
+                        android:layout_width="76dp"
+                        android:layout_height="76dp"
+                        android:layout_gravity="center"
+                        android:background="@drawable/nav_bubble_circle"
+                        android:visibility="gone" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="vertical"
+                        android:gravity="center">
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_tab_contacts"
+                            android:contentDescription="@string/tab_contacts" />
+                        <TextView style="@style/NavLabel" android:text="@string/tab_contacts" />
+                    </LinearLayout>
+                </FrameLayout>
+
+                <FrameLayout android:id="@+id/tab_keypad" style="@style/NavCell">
+                    <View
+                        android:layout_width="76dp"
+                        android:layout_height="76dp"
+                        android:layout_gravity="center"
+                        android:background="@drawable/nav_bubble_circle"
+                        android:visibility="gone" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="vertical"
+                        android:gravity="center">
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_tab_keypad"
+                            android:contentDescription="@string/tab_keypad" />
+                        <TextView style="@style/NavLabel" android:text="@string/tab_keypad" />
+                    </LinearLayout>
+                </FrameLayout>
+
+                <FrameLayout android:id="@+id/nav_shield" style="@style/NavCell">
+                    <View
+                        android:layout_width="76dp"
+                        android:layout_height="76dp"
+                        android:layout_gravity="center"
+                        android:background="@drawable/nav_bubble_circle"
+                        android:visibility="gone" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="vertical"
+                        android:gravity="center">
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_tab_shield"
+                            android:contentDescription="@string/tab_shield" />
+                        <TextView style="@style/NavLabel" android:text="@string/tab_shield" />
+                    </LinearLayout>
+                </FrameLayout>
             </LinearLayout>
-
-            <LinearLayout android:id="@+id/tab_contacts" style="@style/NavItem">
-                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_tab_contacts" android:contentDescription="@string/tab_contacts" />
-                <TextView style="@style/NavLabel" android:text="@string/tab_contacts" />
-            </LinearLayout>
-
-            <LinearLayout android:id="@+id/tab_keypad" style="@style/NavItem">
-                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_tab_keypad" android:contentDescription="@string/tab_keypad" />
-                <TextView style="@style/NavLabel" android:text="@string/tab_keypad" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/nav_shield"
-            android:layout_width="70dp"
-            android:layout_height="70dp"
-            android:layout_marginStart="12dp"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:background="@drawable/glass_circle">
-            <ImageView android:layout_width="26dp" android:layout_height="26dp" android:src="@drawable/ic_tab_shield" android:contentDescription="@string/tab_shield" />
-        </LinearLayout>
+        </FrameLayout>
     </LinearLayout>
-</LinearLayout>
+</com.diller.app.SwipeTabHost>
