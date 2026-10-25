@@ -4,6 +4,9 @@
 
 No ads. No account. No sign-in. Everything runs on your phone — your calls, contacts and blocklist never leave the device.
 
+> ### ⬇️ [Download Diller.apk](https://github.com/technicalnihilist-lgtm/diller/releases/latest/download/Diller.apk)
+> Latest release — v2.1.0. Also available as a file in this repo: [`Diller.apk`](Diller.apk).
+
 <p align="center">
   <img src="screenshots/keypad.png" width="220" alt="Keypad" />
   <img src="screenshots/calls.png" width="220" alt="Calls" />
@@ -20,14 +23,14 @@ No ads. No account. No sign-in. Everything runs on your phone — your calls, co
 
 - **iPhone-style dialer** — black background, circular dark-grey keys, green call button, and a rounded **Calls / Contacts / Keypad** bar with a round **Shield** button.
 - **Liquid-glass call screen** — a frosted, animated glass screen shown while you're on a call: contact, number, live call state (Calling… / Incoming call / running timer), a scam warning, Mute / Speaker, and a red hang-up. Works for incoming *and* outgoing calls.
-- **Scam & spam call screening** — an `CallScreeningService` inspects every incoming call on-device and warns you before you pick up. Suspicious callers are tagged red in the call list.
+- **Scam & spam call screening** — a `CallScreeningService` inspects every incoming call on-device and warns you before you pick up. Suspicious callers are tagged red in the call list.
 - **Blocklist** — add numbers; blocked callers are rejected automatically.
 - **Theft Guard** — detects a SIM-card swap or repeated failed unlock attempts, sounds a loud alarm, and (with device-admin) can lock the device. Restarts after reboot.
 - **Missed-call filter**, search, and a clean call log.
 
 ## Install
 
-Download **[Diller.apk](Diller.apk)**, copy it to your phone, and tap it. Allow *"install from this source"* when Android asks, then open Diller and grant the permissions.
+Download **[Diller.apk](https://github.com/technicalnihilist-lgtm/diller/releases/latest/download/Diller.apk)**, copy it to your phone, and tap it. Allow *"install from this source"* when Android asks, then open Diller and grant the permissions.
 
 - Package: `com.diller.app`
 - Version: 2.1.0 (versionCode 3) · Min Android 8.0 (API 26) · Target Android 14 (API 34)
