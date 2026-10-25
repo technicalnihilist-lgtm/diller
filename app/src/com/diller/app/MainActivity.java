@@ -48,6 +48,7 @@ public class MainActivity extends Activity {
 
     private static final int WHITE = 0xFFFFFFFF;
     private static final int BLUE = 0xFF0A84FF;
+    private static final int BLUE_BRIGHT = 0xFF4C9AFF;
     private static final int RED = 0xFFFF453A;
 
     private FrameLayout content;
@@ -156,18 +157,12 @@ public class MainActivity extends Activity {
         if (!(item instanceof ViewGroup)) return;
         ViewGroup g = (ViewGroup) item;
         if (g.getChildCount() < 2) return;
-        // child 0 = the glass lens, child 1 = icon + label
-        View lens = g.getChildAt(0);
-        if (sel) {
-            lens.setVisibility(View.VISIBLE);
-            lens.setScaleX(0.86f);
-            lens.setScaleY(0.86f);
-            lens.setAlpha(0.4f);
-            lens.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(170).start();
-        } else {
-            lens.setVisibility(View.GONE);
-        }
-        tintAll(g.getChildAt(1), sel ? BLUE : 0xFFB3B3B8);
+        // child 0 = icon holder (gets the blue capsule), child 1 = label
+        View holder = g.getChildAt(0);
+        holder.setBackgroundResource(sel ? R.drawable.nav_tab_capsule : 0);
+        tintAll(holder, sel ? WHITE : 0xFFB3B3B8);
+        View lb = g.getChildAt(1);
+        if (lb instanceof TextView) ((TextView) lb).setTextColor(sel ? BLUE_BRIGHT : 0xFFB3B3B8);
     }
 
     private void tintAll(View v, int color) {

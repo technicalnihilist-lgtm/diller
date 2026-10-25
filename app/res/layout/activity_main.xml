@@ -16,127 +16,84 @@
         android:layout_height="0dp"
         android:layout_weight="1" />
 
-    <!-- bottom bar: glass pill with 3 tabs + a separate glass circle, like the reference -->
+    <!-- bottom bar: one glass bar with four tabs, selected one gets a blue capsule -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
         android:clipChildren="false"
         android:clipToPadding="false"
-        android:paddingStart="10dp"
-        android:paddingEnd="10dp"
-        android:paddingTop="10dp">
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="8dp">
 
-        <FrameLayout
-            android:layout_width="0dp"
-            android:layout_height="52dp"
-            android:layout_weight="1"
-            android:background="@drawable/nav_bar_glass"
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:orientation="horizontal"
             android:clipChildren="false"
             android:clipToPadding="false"
-            android:padding="3dp">
+            android:padding="4dp">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="horizontal"
-                android:clipChildren="false"
-                android:clipToPadding="false">
-
-                <FrameLayout android:id="@+id/tab_calls" style="@style/NavCell">
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="62dp"
+            <LinearLayout android:id="@+id/tab_calls" style="@style/NavCell"
+                android:orientation="vertical" android:gravity="center">
+                <FrameLayout
+                    android:layout_width="42dp"
+                    android:layout_height="34dp">
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
                         android:layout_gravity="center"
-                        android:layout_marginStart="-10dp"
-                        android:layout_marginEnd="-10dp"
-                        android:background="@drawable/nav_lens"
-                        android:visibility="gone" />
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:orientation="vertical"
-                        android:gravity="center">
-                        <ImageView
-                            android:layout_width="22dp"
-                            android:layout_height="22dp"
-                            android:src="@drawable/ic_tab_recents"
-                            android:contentDescription="@string/tab_calls" />
-                        <TextView style="@style/NavLabel" android:text="@string/tab_calls" />
-                    </LinearLayout>
+                        android:src="@drawable/ic_tab_recents"
+                        android:contentDescription="@string/tab_calls" />
                 </FrameLayout>
-
-                <FrameLayout android:id="@+id/tab_contacts" style="@style/NavCell">
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="62dp"
-                        android:layout_gravity="center"
-                        android:layout_marginStart="-10dp"
-                        android:layout_marginEnd="-10dp"
-                        android:background="@drawable/nav_lens"
-                        android:visibility="gone" />
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:orientation="vertical"
-                        android:gravity="center">
-                        <ImageView
-                            android:layout_width="22dp"
-                            android:layout_height="22dp"
-                            android:src="@drawable/ic_tab_contacts"
-                            android:contentDescription="@string/tab_contacts" />
-                        <TextView style="@style/NavLabel" android:text="@string/tab_contacts" />
-                    </LinearLayout>
-                </FrameLayout>
-
-                <FrameLayout android:id="@+id/tab_keypad" style="@style/NavCell">
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="62dp"
-                        android:layout_gravity="center"
-                        android:layout_marginStart="-10dp"
-                        android:layout_marginEnd="-10dp"
-                        android:background="@drawable/nav_lens"
-                        android:visibility="gone" />
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:orientation="vertical"
-                        android:gravity="center">
-                        <ImageView
-                            android:layout_width="22dp"
-                            android:layout_height="22dp"
-                            android:src="@drawable/ic_tab_keypad"
-                            android:contentDescription="@string/tab_keypad" />
-                        <TextView style="@style/NavLabel" android:text="@string/tab_keypad" />
-                    </LinearLayout>
-                </FrameLayout>
+                <TextView style="@style/NavLabel" android:text="@string/tab_calls" />
             </LinearLayout>
-        </FrameLayout>
 
-        <FrameLayout
-            android:id="@+id/nav_shield"
-            android:layout_width="52dp"
-            android:layout_height="52dp"
-            android:layout_marginStart="10dp"
-            android:background="@drawable/nav_circle_glass"
-            android:clipChildren="false"
-            android:clipToPadding="false">
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="62dp"
-                android:layout_gravity="center"
-                android:layout_marginStart="-10dp"
-                android:layout_marginEnd="-10dp"
-                android:background="@drawable/nav_lens"
-                android:visibility="gone" />
-            <ImageView
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:layout_gravity="center"
-                android:src="@drawable/ic_tab_shield"
-                android:contentDescription="@string/tab_shield" />
-        </FrameLayout>
+            <LinearLayout android:id="@+id/tab_contacts" style="@style/NavCell"
+                android:orientation="vertical" android:gravity="center">
+                <FrameLayout
+                    android:layout_width="42dp"
+                    android:layout_height="34dp">
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_tab_contacts"
+                        android:contentDescription="@string/tab_contacts" />
+                </FrameLayout>
+                <TextView style="@style/NavLabel" android:text="@string/tab_contacts" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/tab_keypad" style="@style/NavCell"
+                android:orientation="vertical" android:gravity="center">
+                <FrameLayout
+                    android:layout_width="42dp"
+                    android:layout_height="34dp">
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_tab_keypad"
+                        android:contentDescription="@string/tab_keypad" />
+                </FrameLayout>
+                <TextView style="@style/NavLabel" android:text="@string/tab_keypad" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/nav_shield" style="@style/NavCell"
+                android:orientation="vertical" android:gravity="center">
+                <FrameLayout
+                    android:layout_width="42dp"
+                    android:layout_height="34dp">
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_tab_shield"
+                        android:contentDescription="@string/tab_shield" />
+                </FrameLayout>
+                <TextView style="@style/NavLabel" android:text="@string/tab_shield" />
+            </LinearLayout>
+        </LinearLayout>
     </LinearLayout>
 </com.diller.app.SwipeTabHost>

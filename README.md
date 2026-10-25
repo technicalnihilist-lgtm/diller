@@ -5,7 +5,7 @@
 No ads. No account. No sign-in. Everything runs on your phone — your calls, contacts and blocklist never leave the device.
 
 > ### ⬇️ [Download Diller.apk](https://github.com/technicalnihilist-lgtm/diller/releases/latest/download/Diller.apk)
-> Latest release — v2.7.0. Also available as a file in this repo: [`Diller.apk`](Diller.apk).
+> Latest release — v2.8.0. Also available as a file in this repo: [`Diller.apk`](Diller.apk).
 
 <p align="center">
   <img src="screenshots/keypad.png" width="200" alt="Keypad" />
@@ -19,6 +19,11 @@ No ads. No account. No sign-in. Everything runs on your phone — your calls, co
 </p>
 
 > Screenshots above are design renders of the current build (see `screenshots/device/` for real device photos of the earlier 1.0 build).
+
+## What's new in 2.8.0
+
+- **Bottom bar matched to the Galaxy-Store-style reference**: four tabs in one bar, **no bar background** (the icons float), and the selected tab sits in a **solid blue capsule** with a **white icon** and a **blue label** — exactly the treatment in the video.
+- Action pills are now **blue-tinted glass** instead of neutral.
 
 ## What's new in 2.7.0
 
@@ -73,7 +78,7 @@ No ads. No account. No sign-in. Everything runs on your phone — your calls, co
 Download **[Diller.apk](https://github.com/technicalnihilist-lgtm/diller/releases/latest/download/Diller.apk)**, copy it to your phone, and tap it. Allow *"install from this source"* when Android asks, then open Diller and grant the permissions.
 
 - Package: `com.diller.app`
-- Version: 2.7.0 (versionCode 10) · Min Android 8.0 (API 26) · Target Android 14 (API 34)
+- Version: 2.8.0 (versionCode 11) · Min Android 8.0 (API 26) · Target Android 14 (API 34)
 - Signed with APK Signature Scheme v2 + v3 (self-signed — not a Play Store listing).
 
 ## Making Diller your default Phone app (needed for the call screen)
