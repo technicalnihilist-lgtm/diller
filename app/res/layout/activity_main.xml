@@ -8,7 +8,7 @@
     android:clipChildren="false"
     android:clipToPadding="false"
     android:paddingTop="34dp"
-    android:paddingBottom="12dp">
+    android:paddingBottom="10dp">
 
     <FrameLayout
         android:id="@+id/content"
@@ -16,23 +16,26 @@
         android:layout_height="0dp"
         android:layout_weight="1" />
 
+    <!-- bottom bar: glass pill with 3 tabs + a separate glass circle, like the reference -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
+        android:gravity="center_vertical"
         android:clipChildren="false"
         android:clipToPadding="false"
         android:paddingStart="10dp"
         android:paddingEnd="10dp"
-        android:paddingTop="8dp">
+        android:paddingTop="10dp">
 
         <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="72dp"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
             android:background="@drawable/nav_bar_glass"
             android:clipChildren="false"
             android:clipToPadding="false"
-            android:padding="4dp">
+            android:padding="3dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -43,10 +46,12 @@
 
                 <FrameLayout android:id="@+id/tab_calls" style="@style/NavCell">
                     <View
-                        android:layout_width="76dp"
-                        android:layout_height="76dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="70dp"
                         android:layout_gravity="center"
-                        android:background="@drawable/nav_bubble_circle"
+                        android:layout_marginStart="-16dp"
+                        android:layout_marginEnd="-16dp"
+                        android:background="@drawable/nav_lens"
                         android:visibility="gone" />
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -54,8 +59,8 @@
                         android:orientation="vertical"
                         android:gravity="center">
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
                             android:src="@drawable/ic_tab_recents"
                             android:contentDescription="@string/tab_calls" />
                         <TextView style="@style/NavLabel" android:text="@string/tab_calls" />
@@ -64,10 +69,12 @@
 
                 <FrameLayout android:id="@+id/tab_contacts" style="@style/NavCell">
                     <View
-                        android:layout_width="76dp"
-                        android:layout_height="76dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="70dp"
                         android:layout_gravity="center"
-                        android:background="@drawable/nav_bubble_circle"
+                        android:layout_marginStart="-16dp"
+                        android:layout_marginEnd="-16dp"
+                        android:background="@drawable/nav_lens"
                         android:visibility="gone" />
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -75,8 +82,8 @@
                         android:orientation="vertical"
                         android:gravity="center">
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
                             android:src="@drawable/ic_tab_contacts"
                             android:contentDescription="@string/tab_contacts" />
                         <TextView style="@style/NavLabel" android:text="@string/tab_contacts" />
@@ -85,10 +92,12 @@
 
                 <FrameLayout android:id="@+id/tab_keypad" style="@style/NavCell">
                     <View
-                        android:layout_width="76dp"
-                        android:layout_height="76dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="70dp"
                         android:layout_gravity="center"
-                        android:background="@drawable/nav_bubble_circle"
+                        android:layout_marginStart="-16dp"
+                        android:layout_marginEnd="-16dp"
+                        android:background="@drawable/nav_lens"
                         android:visibility="gone" />
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -96,35 +105,38 @@
                         android:orientation="vertical"
                         android:gravity="center">
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
                             android:src="@drawable/ic_tab_keypad"
                             android:contentDescription="@string/tab_keypad" />
                         <TextView style="@style/NavLabel" android:text="@string/tab_keypad" />
                     </LinearLayout>
                 </FrameLayout>
-
-                <FrameLayout android:id="@+id/nav_shield" style="@style/NavCell">
-                    <View
-                        android:layout_width="76dp"
-                        android:layout_height="76dp"
-                        android:layout_gravity="center"
-                        android:background="@drawable/nav_bubble_circle"
-                        android:visibility="gone" />
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:orientation="vertical"
-                        android:gravity="center">
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:src="@drawable/ic_tab_shield"
-                            android:contentDescription="@string/tab_shield" />
-                        <TextView style="@style/NavLabel" android:text="@string/tab_shield" />
-                    </LinearLayout>
-                </FrameLayout>
             </LinearLayout>
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/nav_shield"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:layout_marginStart="10dp"
+            android:background="@drawable/nav_circle_glass"
+            android:clipChildren="false"
+            android:clipToPadding="false">
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="70dp"
+                android:layout_gravity="center"
+                android:layout_marginStart="-10dp"
+                android:layout_marginEnd="-10dp"
+                android:background="@drawable/nav_lens"
+                android:visibility="gone" />
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_tab_shield"
+                android:contentDescription="@string/tab_shield" />
         </FrameLayout>
     </LinearLayout>
 </com.diller.app.SwipeTabHost>

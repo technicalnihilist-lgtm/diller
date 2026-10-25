@@ -157,10 +157,17 @@ public class MainActivity extends Activity {
         ViewGroup g = (ViewGroup) item;
         if (g.getChildCount() < 2) return;
         // child 0 = the glass lens, child 1 = icon + label
-        g.getChildAt(0).setVisibility(sel ? View.VISIBLE : View.GONE);
-        tintAll(g.getChildAt(1), sel ? BLUE : 0xCCFFFFFF);
-        g.animate().scaleX(sel ? 1.04f : 1f).scaleY(sel ? 1.04f : 1f)
-                .setDuration(150).start();
+        View lens = g.getChildAt(0);
+        if (sel) {
+            lens.setVisibility(View.VISIBLE);
+            lens.setScaleX(0.86f);
+            lens.setScaleY(0.86f);
+            lens.setAlpha(0.4f);
+            lens.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(170).start();
+        } else {
+            lens.setVisibility(View.GONE);
+        }
+        tintAll(g.getChildAt(1), sel ? BLUE : 0xFFB3B3B8);
     }
 
     private void tintAll(View v, int color) {
