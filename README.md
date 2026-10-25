@@ -5,7 +5,7 @@
 No ads. No account. No sign-in. Everything runs on your phone — your calls, contacts and blocklist never leave the device.
 
 > ### ⬇️ [Download Diller.apk](https://github.com/technicalnihilist-lgtm/diller/releases/latest/download/Diller.apk)
-> Latest release — v2.8.0. Also available as a file in this repo: [`Diller.apk`](Diller.apk).
+> Latest release — v2.9.0. Also available as a file in this repo: [`Diller.apk`](Diller.apk).
 
 <p align="center">
   <img src="screenshots/keypad.png" width="200" alt="Keypad" />
@@ -19,6 +19,16 @@ No ads. No account. No sign-in. Everything runs on your phone — your calls, co
 </p>
 
 > Screenshots above are design renders of the current build (see `screenshots/device/` for real device photos of the earlier 1.0 build).
+
+## What's new in 2.9.0 — iOS 26 Liquid Glass
+
+Rebuilt the whole UI against Apple's iOS 26 Liquid Glass keynote:
+
+- **Colourful wallpaper backdrop** — the app now sits on a soft blue/teal/purple gradient, so the glass has something to refract (glass on pure black just looks grey — that was the core miss).
+- **Frosted glass keypad** — keys are translucent capsules with thin bright rims instead of solid dark tiles.
+- **Glass dock** — the tab bar is a frosted capsule with a thin rim; the selected tab is a lighter glass capsule with a blue icon + label.
+- **Glass cards** — Shield cards, the search field and list buttons are all translucent with rims.
+- Text tones lightened for contrast over glass.
 
 ## What's new in 2.8.0
 
@@ -78,7 +88,7 @@ No ads. No account. No sign-in. Everything runs on your phone — your calls, co
 Download **[Diller.apk](https://github.com/technicalnihilist-lgtm/diller/releases/latest/download/Diller.apk)**, copy it to your phone, and tap it. Allow *"install from this source"* when Android asks, then open Diller and grant the permissions.
 
 - Package: `com.diller.app`
-- Version: 2.8.0 (versionCode 11) · Min Android 8.0 (API 26) · Target Android 14 (API 34)
+- Version: 2.9.0 (versionCode 12) · Min Android 8.0 (API 26) · Target Android 14 (API 34)
 - Signed with APK Signature Scheme v2 + v3 (self-signed — not a Play Store listing).
 
 ## Making Diller your default Phone app (needed for the call screen)

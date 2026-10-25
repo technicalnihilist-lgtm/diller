@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/bg_black"
+    android:background="@drawable/bg_wallpaper"
     android:clipChildren="false"
     android:clipToPadding="false"
     android:paddingTop="34dp"
@@ -31,6 +31,7 @@
             android:layout_width="match_parent"
             android:layout_height="60dp"
             android:orientation="horizontal"
+            android:background="@drawable/nav_bar_glass"
             android:clipChildren="false"
             android:clipToPadding="false"
             android:padding="4dp">

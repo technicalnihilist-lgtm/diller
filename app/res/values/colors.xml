@@ -9,15 +9,15 @@
     <color name="ios_green">#FF34C759</color>
     <color name="ios_red">#FFFF3B30</color>
     <color name="ios_blue">#FF0A84FF</color>
-    <color name="ios_grey">#FF8E8E93</color>
-    <color name="ios_grey2">#FF636366</color>
+    <color name="ios_grey">#FFC9C9D1</color>
+    <color name="ios_grey2">#FF9A9AA2</color>
     <color name="ios_avatar">#FF5B5FBF</color>
     <color name="ios_divider">#FF2C2C2E</color>
     <color name="ios_card">#FF1C1C1E</color>
 
     <color name="text_primary">#FFFFFFFF</color>
-    <color name="text_secondary">#B3FFFFFF</color>
-    <color name="text_tertiary">#80FFFFFF</color>
+    <color name="text_secondary">#D9FFFFFF</color>
+    <color name="text_tertiary">#B3FFFFFF</color>
     <color name="accent">#FF6FE7FF</color>
     <color name="call_green">#FF34C759</color>
     <color name="call_red">#FFFF3B30</color>
