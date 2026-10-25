@@ -29,6 +29,22 @@ public class DillerInCallService extends InCallService {
 
         boolean ringing = call.getState() == Call.STATE_RINGING;
 
+        // 0) AI agent: answer unknown / suspected-spam calls on the user's behalf.
+        if (ringing && getSharedPreferences("diller", MODE_PRIVATE).getBoolean("ai_agent", false)) {
+            boolean known = Contacts.nameFor(this, number) != null;
+            SpamEngine.Verdict v = new SpamEngine(this).check(number);
+            if (!known || v.score >= 60) {
+                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(new Runnable() {
+                    public void run() {
+                        try { call.answer(android.telecom.VideoProfile.STATE_AUDIO_ONLY); }
+                        catch (Exception ignored) { }
+                    }
+                }, 1800);
+                AiHistory.add(this, "call", "AI agent answered",
+                        (number == null || number.isEmpty() ? "Unknown" : number) + " - " + v.label);
+            }
+        }
+
         // 1) Try to show the activity directly (works when Diller is the default dialer).
         try {
             Intent i = new Intent(this, InCallActivity.class);

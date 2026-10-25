@@ -5,7 +5,7 @@
 No ads. No account. No sign-in. Everything runs on your phone — your calls, contacts and blocklist never leave the device.
 
 > ### ⬇️ [Download Diller.apk](https://github.com/technicalnihilist-lgtm/diller/releases/latest/download/Diller.apk)
-> Latest release — v2.9.0. Also available as a file in this repo: [`Diller.apk`](Diller.apk).
+> Latest release — v3.0.0. Also available as a file in this repo: [`Diller.apk`](Diller.apk).
 
 <p align="center">
   <img src="screenshots/keypad.png" width="200" alt="Keypad" />
@@ -20,15 +20,33 @@ No ads. No account. No sign-in. Everything runs on your phone — your calls, co
 
 > Screenshots above are design renders of the current build (see `screenshots/device/` for real device photos of the earlier 1.0 build).
 
+## What's new in 3.0.0 — AI
+
+A new **AI tab** (5th tab) with:
+
+- **Today's call summary** — real numbers from your call log: total calls (outgoing / incoming / missed), talk time, and who you spoke to most ("Soniya — 3 baar"). Runs fully on-device, no key needed.
+- **Ask AI** — a chat box wired to your AI provider.
+- **Translate** — type text, cycle the target language (Hindi, Bengali, Tamil, Telugu, Marathi, Gujarati, Kannada, Malayalam), translate.
+- **AI call agent** — when enabled, Diller answers calls from unknown or suspected-spam numbers on your behalf and records each one.
+- **AI history** — local log of every question, translation and call the agent handled.
+
+### Setting up the AI
+
+No model is bundled, so chat and translation need an API key. Open **AI → "AI settings (API key)"** and enter **provider** (`sarvam` or `openai`), your **API key**, **base URL** (default `https://api.sarvam.ai`) and **model** (default `sarvam-m`). Without a key, the call summary and history still work.
+
+### What is NOT possible on Android
+
+Android blocks third-party access to call audio, so two requested features cannot be built by any sideloaded app:
+
+- **Live captions of the other person** — no app gets an audio stream of a call (only the system's Live Caption can).
+- **A real two-way AI voice agent** that listens and speaks to the caller — injecting TTS into a call and recording the caller need system privileges.
+
+The AI agent here therefore **answers and logs** the call; it cannot converse.
+
 ## What's new in 2.9.0 — iOS 26 Liquid Glass
 
-Rebuilt the whole UI against Apple's iOS 26 Liquid Glass keynote:
-
-- **Colourful wallpaper backdrop** — the app now sits on a soft blue/teal/purple gradient, so the glass has something to refract (glass on pure black just looks grey — that was the core miss).
-- **Frosted glass keypad** — keys are translucent capsules with thin bright rims instead of solid dark tiles.
-- **Glass dock** — the tab bar is a frosted capsule with a thin rim; the selected tab is a lighter glass capsule with a blue icon + label.
-- **Glass cards** — Shield cards, the search field and list buttons are all translucent with rims.
-- Text tones lightened for contrast over glass.
+- **Colourful wallpaper backdrop** so the glass has something to refract (glass on pure black just looks grey).
+- **Frosted glass keypad**, **glass dock**, **glass cards** with thin bright rims.
 
 ## What's new in 2.8.0
 
@@ -88,7 +106,7 @@ Rebuilt the whole UI against Apple's iOS 26 Liquid Glass keynote:
 Download **[Diller.apk](https://github.com/technicalnihilist-lgtm/diller/releases/latest/download/Diller.apk)**, copy it to your phone, and tap it. Allow *"install from this source"* when Android asks, then open Diller and grant the permissions.
 
 - Package: `com.diller.app`
-- Version: 2.9.0 (versionCode 12) · Min Android 8.0 (API 26) · Target Android 14 (API 34)
+- Version: 3.0.0 (versionCode 13) · Min Android 8.0 (API 26) · Target Android 14 (API 34)
 - Signed with APK Signature Scheme v2 + v3 (self-signed — not a Play Store listing).
 
 ## Making Diller your default Phone app (needed for the call screen)

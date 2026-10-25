@@ -53,8 +53,8 @@ public class MainActivity extends Activity {
 
     private FrameLayout content;
     private SwipeTabHost root;
-    private View navCalls, navContacts, navKeypad, navShield;
-    private View vCalls, vContacts, vKeypad, vShield;
+    private View navCalls, navContacts, navKeypad, navShield, navAi;
+    private View vCalls, vContacts, vKeypad, vShield, vAi;
     private int current = 2; // Keypad by default, like the iOS Phone app
 
     private SpamEngine engine;
@@ -92,25 +92,30 @@ public class MainActivity extends Activity {
         navContacts = findViewById(R.id.tab_contacts);
         navKeypad = findViewById(R.id.tab_keypad);
         navShield = findViewById(R.id.nav_shield);
+        navAi = findViewById(R.id.tab_ai);
 
         vCalls = getLayoutInflater().inflate(R.layout.view_recents, content, false);
         vContacts = getLayoutInflater().inflate(R.layout.view_contacts, content, false);
         vKeypad = getLayoutInflater().inflate(R.layout.view_keypad, content, false);
         vShield = getLayoutInflater().inflate(R.layout.view_shield, content, false);
+        vAi = getLayoutInflater().inflate(R.layout.view_ai, content, false);
         content.addView(vCalls);
         content.addView(vContacts);
         content.addView(vKeypad);
         content.addView(vShield);
+        content.addView(vAi);
 
         setupKeypad();
         setupCalls();
         setupContacts();
         setupShield();
+        setupAi();
 
         navCalls.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { showTab(0); } });
         navContacts.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { showTab(1); } });
         navKeypad.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { showTab(2); } });
         navShield.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { showTab(3); } });
+        navAi.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { showTab(4); } });
 
         root = findViewById(R.id.root);
         if (root != null) {
@@ -118,7 +123,7 @@ public class MainActivity extends Activity {
                 public void onSwipe(int dir) {
                     int next = current + dir;
                     if (next < 0) next = 0;
-                    if (next > 3) next = 3;
+                    if (next > 4) next = 4;
                     if (next != current) showTab(next, dir);
                 }
             });
@@ -134,13 +139,14 @@ public class MainActivity extends Activity {
 
     private void showTab(int i, int dir) {
         current = i;
-        View[] views = {vCalls, vContacts, vKeypad, vShield};
+        View[] views = {vCalls, vContacts, vKeypad, vShield, vAi};
         for (int k = 0; k < views.length; k++)
             views[k].setVisibility(k == i ? View.VISIBLE : View.GONE);
         styleNav(navCalls, i == 0);
         styleNav(navContacts, i == 1);
         styleNav(navKeypad, i == 2);
         styleNav(navShield, i == 3);
+        styleNav(navAi, i == 4);
         if (dir != 0) {
             View in = views[i];
             float w = getResources().getDisplayMetrics().widthPixels;
@@ -151,6 +157,7 @@ public class MainActivity extends Activity {
         if (i == 0) loadCalls();
         if (i == 1) loadContacts(search == null ? "" : search.getText().toString());
         if (i == 3) refreshShield();
+        if (i == 4) refreshAi();
     }
 
     private void styleNav(View item, boolean sel) {
@@ -931,6 +938,132 @@ public class MainActivity extends Activity {
         updateDisplay();
         if (current == 0) loadCalls();
         if (current == 1) loadContacts(search == null ? "" : search.getText().toString());
+    }
+
+
+    // ---------------- AI ----------------
+
+    private void setupAi() {
+        final TextView summary = vAi.findViewById(R.id.ai_summary);
+        vAi.findViewById(R.id.btn_summary_refresh).setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) { summary.setText(DailySummary.build(MainActivity.this)); }
+        });
+
+        final EditText input = vAi.findViewById(R.id.ai_input);
+        final TextView reply = vAi.findViewById(R.id.ai_reply);
+        vAi.findViewById(R.id.btn_ask).setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                final String q = input.getText().toString().trim();
+                if (q.isEmpty()) return;
+                if (!new AiConfig(MainActivity.this).hasKey()) {
+                    reply.setText("Add your AI API key first - tap \"AI settings (API key)\" below.");
+                    return;
+                }
+                reply.setText("Thinking...");
+                new AiClient(MainActivity.this).chat(q, new AiClient.Callback() {
+                    public void onResult(String text) {
+                        reply.setText(text);
+                        AiHistory.add(MainActivity.this, "chat", "Asked AI", q);
+                        refreshAi();
+                    }
+                });
+            }
+        });
+
+        final EditText trIn = vAi.findViewById(R.id.tr_input);
+        final TextView trOut = vAi.findViewById(R.id.tr_out);
+        final TextView trLang = vAi.findViewById(R.id.tr_lang);
+        final String[] langs = {"Hindi","Bengali","Tamil","Telugu","Marathi","Gujarati","Kannada","Malayalam"};
+        final String[] codes = {"hi-IN","bn-IN","ta-IN","te-IN","mr-IN","gu-IN","kn-IN","ml-IN"};
+        final int[] li = {0};
+        trLang.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                li[0] = (li[0] + 1) % langs.length;
+                trLang.setText(langs[li[0]]);
+            }
+        });
+        vAi.findViewById(R.id.btn_translate).setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                final String t = trIn.getText().toString().trim();
+                if (t.isEmpty()) return;
+                if (!new AiConfig(MainActivity.this).hasKey()) {
+                    trOut.setText("Add your AI API key first.");
+                    return;
+                }
+                trOut.setText("Translating...");
+                new AiClient(MainActivity.this).translate(t, codes[li[0]], new AiClient.Callback() {
+                    public void onResult(String text) {
+                        trOut.setText(text);
+                        AiHistory.add(MainActivity.this, "translate", "Translated to " + trLang.getText(), t);
+                    }
+                });
+            }
+        });
+
+        Switch sw = vAi.findViewById(R.id.agent_switch);
+        sw.setChecked(prefs().getBoolean("ai_agent", false));
+        sw.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
+            public void onCheckedChanged(android.widget.CompoundButton b, boolean on) {
+                prefs().edit().putBoolean("ai_agent", on).apply();
+                refreshAi();
+            }
+        });
+        vAi.findViewById(R.id.btn_ai_settings).setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) { showAiSettings(); }
+        });
+        refreshAi();
+    }
+
+    private void refreshAi() {
+        if (vAi == null) return;
+        boolean on = prefs().getBoolean("ai_agent", false);
+        TextView st = vAi.findViewById(R.id.agent_status);
+        st.setText(on ? "AI agent ON - will answer unknown / suspected-spam calls."
+                      : "AI agent off.");
+        TextView hist = vAi.findViewById(R.id.ai_history);
+        hist.setText(AiHistory.render(this));
+        TextView sum = vAi.findViewById(R.id.ai_summary);
+        String cur = sum.getText().toString();
+        if (cur.equals("Tap refresh") || cur.trim().isEmpty()) sum.setText(DailySummary.build(this));
+    }
+
+    private void showAiSettings() {
+        final AiConfig cfg = new AiConfig(this);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(22), dp(6), dp(22), 0);
+
+        final EditText keyIn = field(cfg.key(), "API key");
+        final EditText provIn = field(cfg.provider(), "provider: sarvam / openai");
+        final EditText baseIn = field(cfg.baseUrl(), "base URL");
+        final EditText modelIn = field(cfg.model(), "model");
+        box.addView(keyIn); box.addView(provIn); box.addView(baseIn); box.addView(modelIn);
+
+        new AlertDialog.Builder(this)
+                .setTitle("AI settings")
+                .setView(box)
+                .setPositiveButton("Save", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface d, int w) {
+                        cfg.setKey(keyIn.getText().toString().trim());
+                        cfg.setProvider(provIn.getText().toString().trim());
+                        cfg.setBaseUrl(baseIn.getText().toString().trim());
+                        cfg.setModel(modelIn.getText().toString().trim());
+                        toast("AI settings saved");
+                        refreshAi();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private EditText field(String value, String hint) {
+        EditText e = new EditText(this);
+        e.setHint(hint);
+        e.setText(value);
+        e.setSingleLine(true);
+        e.setTextColor(WHITE);
+        e.setHintTextColor(0xFF8E8E93);
+        return e;
     }
 
     private void toast(String m) {

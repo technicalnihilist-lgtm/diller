@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@drawable/bg_wallpaper"
+    android:background="@color/bg_black"
     android:clipChildren="false"
     android:clipToPadding="false"
     android:paddingTop="34dp"
@@ -31,7 +31,6 @@
             android:layout_width="match_parent"
             android:layout_height="60dp"
             android:orientation="horizontal"
-            android:background="@drawable/nav_bar_glass"
             android:clipChildren="false"
             android:clipToPadding="false"
             android:padding="4dp">
@@ -94,6 +93,21 @@
                         android:contentDescription="@string/tab_shield" />
                 </FrameLayout>
                 <TextView style="@style/NavLabel" android:text="@string/tab_shield" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/tab_ai" style="@style/NavCell"
+                android:orientation="vertical" android:gravity="center">
+                <FrameLayout
+                    android:layout_width="42dp"
+                    android:layout_height="34dp">
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_tab_ai"
+                        android:contentDescription="@string/tab_ai" />
+                </FrameLayout>
+                <TextView style="@style/NavLabel" android:text="@string/tab_ai" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
