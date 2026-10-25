@@ -7,6 +7,7 @@ import android.app.admin.DevicePolicyManager;
 import android.app.role.RoleManager;
 import android.content.ComponentName;
 import android.content.ContentProviderOperation;
+import android.content.ContentUris;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -455,18 +456,20 @@ public class MainActivity extends Activity {
             Cursor cur = null;
             try {
                 cur = getContentResolver().query(CallLog.Calls.CONTENT_URI,
-                        new String[]{CallLog.Calls.CACHED_NAME, CallLog.Calls.NUMBER,
-                                CallLog.Calls.TYPE, CallLog.Calls.DATE},
+                        new String[]{CallLog.Calls._ID, CallLog.Calls.CACHED_NAME,
+                                CallLog.Calls.NUMBER, CallLog.Calls.TYPE, CallLog.Calls.DATE},
                         null, null, CallLog.Calls.DATE + " DESC");
                 if (cur != null) {
                     while (cur.moveToNext() && rows.size() < 250) {
-                        String name = cur.getString(0);
-                        String num = cur.getString(1);
-                        int type = cur.getInt(2);
-                        long date = cur.getLong(3);
+                        long callId = cur.getLong(0);
+                        String name = cur.getString(1);
+                        String num = cur.getString(2);
+                        int type = cur.getInt(3);
+                        long date = cur.getLong(4);
                         if (missedOnly && type != CallLog.Calls.MISSED_TYPE) continue;
 
                         CallRow r = new CallRow();
+                        r.id = callId;
                         r.number = num == null ? "" : num;
                         boolean hasName = name != null && !name.isEmpty();
                         r.title = hasName ? name : (r.number.isEmpty() ? "Unknown" : r.number);
@@ -511,6 +514,7 @@ public class MainActivity extends Activity {
 
     class CallRow {
         String title, sub, time, number;
+        long id;
         int iconRes;
         boolean spam;
     }
@@ -536,7 +540,50 @@ public class MainActivity extends Activity {
             cv.findViewById(R.id.call_action).setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) { placeCall(num); }
             });
+            final CallRow row = r;
+            cv.setOnTouchListener(new SwipeRowTouchListener(MainActivity.this,
+                    new SwipeRowTouchListener.Callbacks() {
+                        public void onSwipeRight() { placeCall(row.number); }
+                        public void onSwipeLeft() { deleteCall(row.id); }
+                    }, R.drawable.swipe_call, R.drawable.swipe_delete));
             return cv;
+        }
+    }
+
+    private void deleteCall(long id) {
+        try {
+            int n = getContentResolver().delete(CallLog.Calls.CONTENT_URI,
+                    CallLog.Calls._ID + "=?", new String[]{String.valueOf(id)});
+            if (n > 0) { toast("Call deleted"); loadCalls(); }
+            else toast("Couldn't delete call");
+        } catch (Exception e) {
+            toast("Couldn't delete — allow the Call log permission");
+        }
+    }
+
+    private void confirmDeleteContact(final ContactRow row) {
+        new AlertDialog.Builder(this)
+                .setTitle("Delete contact")
+                .setMessage("Remove " + row.name + " from your contacts?")
+                .setPositiveButton("Delete", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface d, int which) { deleteContact(row); }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void deleteContact(ContactRow row) {
+        try {
+            Uri u = ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, row.contactId);
+            int n = getContentResolver().delete(u, null, null);
+            if (n > 0) {
+                toast("Contact deleted");
+                loadContacts(search == null ? "" : search.getText().toString());
+            } else {
+                toast("Couldn't delete contact");
+            }
+        } catch (Exception e) {
+            toast("Couldn't delete — allow the Contacts permission");
         }
     }
 
@@ -573,19 +620,22 @@ public class MainActivity extends Activity {
             try {
                 cur = getContentResolver().query(
                         ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                        new String[]{ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                        new String[]{ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+                                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
                                 ContactsContract.CommonDataKinds.Phone.NUMBER},
                         null, null,
                         ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC");
                 String f = filter == null ? "" : filter.toLowerCase().trim();
                 if (cur != null) {
                     while (cur.moveToNext()) {
-                        String name = cur.getString(0);
-                        String num = cur.getString(1);
+                        long cid = cur.getLong(0);
+                        String name = cur.getString(1);
+                        String num = cur.getString(2);
                         if (name == null) name = "";
                         if (!f.isEmpty() && !name.toLowerCase().contains(f)
                                 && (num == null || !num.toLowerCase().contains(f))) continue;
                         ContactRow r = new ContactRow();
+                        r.contactId = cid;
                         r.name = name.isEmpty() ? "Unknown" : name;
                         r.number = num == null ? "" : num;
                         rows.add(r);
@@ -603,6 +653,7 @@ public class MainActivity extends Activity {
 
     class ContactRow {
         String name, number;
+        long contactId;
     }
 
     class ContactsAdapter extends BaseAdapter {
@@ -622,6 +673,12 @@ public class MainActivity extends Activity {
             cv.findViewById(R.id.contact_call).setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) { placeCall(num); }
             });
+            final ContactRow row = r;
+            cv.setOnTouchListener(new SwipeRowTouchListener(MainActivity.this,
+                    new SwipeRowTouchListener.Callbacks() {
+                        public void onSwipeRight() { placeCall(row.number); }
+                        public void onSwipeLeft() { confirmDeleteContact(row); }
+                    }, R.drawable.swipe_call, R.drawable.swipe_delete));
             return cv;
         }
     }
