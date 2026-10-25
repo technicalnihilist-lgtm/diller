@@ -5,7 +5,7 @@
 No ads. No account. No sign-in. Everything runs on your phone — your calls, contacts and blocklist never leave the device.
 
 > ### ⬇️ [Download Diller.apk](https://github.com/technicalnihilist-lgtm/diller/releases/latest/download/Diller.apk)
-> Latest release — v2.3.0. Also available as a file in this repo: [`Diller.apk`](Diller.apk).
+> Latest release — v2.3.1. Also available as a file in this repo: [`Diller.apk`](Diller.apk).
 
 <p align="center">
   <img src="screenshots/keypad.png" width="200" alt="Keypad" />
@@ -19,6 +19,10 @@ No ads. No account. No sign-in. Everything runs on your phone — your calls, co
 </p>
 
 > Screenshots above are design renders of the current build (see `screenshots/device/` for real device photos of the earlier 1.0 build).
+
+## What's new in 2.3.1
+
+- **Swipe gestures actually work now.** 2.3.0 attached the swipe listener to list rows, but ListView rows are not clickable by default, so a row never became the touch target and never received the drag events — the gesture could not fire. Rows are now clickable and own the whole gesture, and taps are handled by the same listener. Swipe **right to call**, **left to delete** (calls immediately, contacts after a confirm).
 
 ## What's new in 2.3.0
 
@@ -46,7 +50,7 @@ No ads. No account. No sign-in. Everything runs on your phone — your calls, co
 Download **[Diller.apk](https://github.com/technicalnihilist-lgtm/diller/releases/latest/download/Diller.apk)**, copy it to your phone, and tap it. Allow *"install from this source"* when Android asks, then open Diller and grant the permissions.
 
 - Package: `com.diller.app`
-- Version: 2.3.0 (versionCode 5) · Min Android 8.0 (API 26) · Target Android 14 (API 34)
+- Version: 2.3.1 (versionCode 6) · Min Android 8.0 (API 26) · Target Android 14 (API 34)
 - Signed with APK Signature Scheme v2 + v3 (self-signed — not a Play Store listing).
 
 ## Making Diller your default Phone app (needed for the call screen)

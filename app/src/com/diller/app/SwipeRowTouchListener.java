@@ -8,13 +8,17 @@ import android.view.ViewParent;
 
 /**
  * Swipe a list row: drag right to call, drag left to delete.
- * Vertical drags are left alone so the list still scrolls.
+ * Vertical drags are left to the ListView so scrolling still works.
+ *
+ * The row MUST be clickable (setClickable(true)) or it never becomes the touch
+ * target and will not receive MOVE/UP events.
  */
 public class SwipeRowTouchListener implements View.OnTouchListener {
 
     public interface Callbacks {
         void onSwipeRight();
         void onSwipeLeft();
+        void onTap();
     }
 
     private final Callbacks cb;
@@ -30,7 +34,7 @@ public class SwipeRowTouchListener implements View.OnTouchListener {
         this.bgCall = bgCall;
         this.bgDelete = bgDelete;
         this.slop = ViewConfiguration.get(c).getScaledTouchSlop();
-        this.maxSwipe = c.getResources().getDisplayMetrics().density * 96f;
+        this.maxSwipe = c.getResources().getDisplayMetrics().density * 110f;
     }
 
     @Override
@@ -48,7 +52,8 @@ public class SwipeRowTouchListener implements View.OnTouchListener {
                 float dx = e.getX() - x0;
                 float dy = e.getY() - y0;
                 if (!swiping) {
-                    if (Math.abs(dx) > slop && Math.abs(dx) > Math.abs(dy) * 1.4f) {
+                    // only start a swipe on a clearly horizontal drag
+                    if (Math.abs(dx) > slop && Math.abs(dx) > Math.abs(dy) * 1.3f) {
                         swiping = true;
                         ViewParent p = v.getParent();
                         if (p != null) p.requestDisallowInterceptTouchEvent(true);
@@ -67,13 +72,20 @@ public class SwipeRowTouchListener implements View.OnTouchListener {
                 if (!swiping) {
                     v.setTranslationX(0f);
                     v.setBackgroundResource(0);
+                    // treat as a tap only if the finger barely moved
+                    if (e.getActionMasked() == MotionEvent.ACTION_UP
+                            && Math.abs(e.getX() - x0) < slop
+                            && Math.abs(e.getY() - y0) < slop) {
+                        cb.onTap();
+                        return true;
+                    }
                     return false;
                 }
                 ViewParent p = v.getParent();
                 if (p != null) p.requestDisallowInterceptTouchEvent(false);
 
                 float tx = v.getTranslationX();
-                float threshold = maxSwipe * 0.55f;
+                float threshold = maxSwipe * 0.5f;
                 final boolean right = tx > threshold;
                 final boolean left = tx < -threshold;
                 swiping = false;

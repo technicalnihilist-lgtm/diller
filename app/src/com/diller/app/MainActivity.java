@@ -541,10 +541,12 @@ public class MainActivity extends Activity {
                 public void onClick(View v) { placeCall(num); }
             });
             final CallRow row = r;
+            cv.setClickable(true);
             cv.setOnTouchListener(new SwipeRowTouchListener(MainActivity.this,
                     new SwipeRowTouchListener.Callbacks() {
                         public void onSwipeRight() { placeCall(row.number); }
                         public void onSwipeLeft() { deleteCall(row.id); }
+                        public void onTap() { placeCall(row.number); }
                     }, R.drawable.swipe_call, R.drawable.swipe_delete));
             return cv;
         }
@@ -674,10 +676,12 @@ public class MainActivity extends Activity {
                 public void onClick(View v) { placeCall(num); }
             });
             final ContactRow row = r;
+            cv.setClickable(true);
             cv.setOnTouchListener(new SwipeRowTouchListener(MainActivity.this,
                     new SwipeRowTouchListener.Callbacks() {
                         public void onSwipeRight() { placeCall(row.number); }
                         public void onSwipeLeft() { confirmDeleteContact(row); }
+                        public void onTap() { placeCall(row.number); }
                     }, R.drawable.swipe_call, R.drawable.swipe_delete));
             return cv;
         }
