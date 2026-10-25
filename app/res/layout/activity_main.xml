@@ -47,10 +47,10 @@
                 <FrameLayout android:id="@+id/tab_calls" style="@style/NavCell">
                     <View
                         android:layout_width="match_parent"
-                        android:layout_height="70dp"
+                        android:layout_height="62dp"
                         android:layout_gravity="center"
-                        android:layout_marginStart="-16dp"
-                        android:layout_marginEnd="-16dp"
+                        android:layout_marginStart="-10dp"
+                        android:layout_marginEnd="-10dp"
                         android:background="@drawable/nav_lens"
                         android:visibility="gone" />
                     <LinearLayout
@@ -70,10 +70,10 @@
                 <FrameLayout android:id="@+id/tab_contacts" style="@style/NavCell">
                     <View
                         android:layout_width="match_parent"
-                        android:layout_height="70dp"
+                        android:layout_height="62dp"
                         android:layout_gravity="center"
-                        android:layout_marginStart="-16dp"
-                        android:layout_marginEnd="-16dp"
+                        android:layout_marginStart="-10dp"
+                        android:layout_marginEnd="-10dp"
                         android:background="@drawable/nav_lens"
                         android:visibility="gone" />
                     <LinearLayout
@@ -93,10 +93,10 @@
                 <FrameLayout android:id="@+id/tab_keypad" style="@style/NavCell">
                     <View
                         android:layout_width="match_parent"
-                        android:layout_height="70dp"
+                        android:layout_height="62dp"
                         android:layout_gravity="center"
-                        android:layout_marginStart="-16dp"
-                        android:layout_marginEnd="-16dp"
+                        android:layout_marginStart="-10dp"
+                        android:layout_marginEnd="-10dp"
                         android:background="@drawable/nav_lens"
                         android:visibility="gone" />
                     <LinearLayout
@@ -125,7 +125,7 @@
             android:clipToPadding="false">
             <View
                 android:layout_width="match_parent"
-                android:layout_height="70dp"
+                android:layout_height="62dp"
                 android:layout_gravity="center"
                 android:layout_marginStart="-10dp"
                 android:layout_marginEnd="-10dp"
