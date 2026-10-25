@@ -5,7 +5,7 @@
 No ads. No account. No sign-in. Everything runs on your phone — your calls, contacts and blocklist never leave the device.
 
 > ### ⬇️ [Download Diller.apk](https://github.com/technicalnihilist-lgtm/diller/releases/latest/download/Diller.apk)
-> Latest release — v3.0.1. Also available as a file in this repo: [`Diller.apk`](Diller.apk).
+> Latest release — v3.1.0. Also available as a file in this repo: [`Diller.apk`](Diller.apk).
 
 <p align="center">
   <img src="screenshots/keypad.png" width="200" alt="Keypad" />
@@ -19,6 +19,12 @@ No ads. No account. No sign-in. Everything runs on your phone — your calls, co
 </p>
 
 > Screenshots above are design renders of the current build (see `screenshots/device/` for real device photos of the earlier 1.0 build).
+
+## What's new in 3.1.0
+
+- **Built-in key support.** `AiConfig` now falls back to a `BuiltinKey` class if the user hasn't saved a key, so a personal build can ship with the AI already working — no setup screen.
+- `BuiltinKey.java` is **gitignored**: it is generated only for personal builds and never lands in this public repo.
+- The public APK here still ships **without** a key (a key in a public repo would be extracted and abused). Paste your own key in **AI → AI settings**.
 
 ## What's new in 3.0.1
 
@@ -112,7 +118,7 @@ The AI agent here therefore **answers and logs** the call; it cannot converse.
 Download **[Diller.apk](https://github.com/technicalnihilist-lgtm/diller/releases/latest/download/Diller.apk)**, copy it to your phone, and tap it. Allow *"install from this source"* when Android asks, then open Diller and grant the permissions.
 
 - Package: `com.diller.app`
-- Version: 3.0.1 (versionCode 14) · Min Android 8.0 (API 26) · Target Android 14 (API 34)
+- Version: 3.1.0 (versionCode 15) · Min Android 8.0 (API 26) · Target Android 14 (API 34)
 - Signed with APK Signature Scheme v2 + v3 (self-signed — not a Play Store listing).
 
 ## Making Diller your default Phone app (needed for the call screen)

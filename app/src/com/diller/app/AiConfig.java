@@ -11,7 +11,22 @@ public class AiConfig {
         p = c.getApplicationContext().getSharedPreferences("diller", Context.MODE_PRIVATE);
     }
 
-    public String key() { return p.getString("ai_key", ""); }
+    public String key() {
+        String saved = p.getString("ai_key", "");
+        if (saved != null && !saved.trim().isEmpty()) return saved;
+        return builtinKey();
+    }
+
+    /** Key compiled into personal builds via BuiltinKey (gitignored). Empty in public builds. */
+    private static String builtinKey() {
+        try {
+            Class<?> c = Class.forName("com.diller.app.BuiltinKey");
+            Object v = c.getField("KEY").get(null);
+            return v == null ? "" : String.valueOf(v).trim();
+        } catch (Throwable t) {
+            return "";
+        }
+    }
     public void setKey(String v) { p.edit().putString("ai_key", v).apply(); }
 
     public String provider() { return p.getString("ai_provider", "sarvam"); }
