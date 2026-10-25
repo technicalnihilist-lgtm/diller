@@ -135,12 +135,18 @@ public class MainActivity extends Activity {
         if (!(item instanceof ViewGroup)) return;
         ViewGroup g = (ViewGroup) item;
         if (g.getChildCount() >= 2) {
-            item.setBackgroundResource(sel ? R.drawable.nav_selected : 0);
-            tint(g.getChildAt(0), sel ? BLUE : WHITE);
+            // liquid-glass capsule on the selected tab
+            item.setBackgroundResource(sel ? R.drawable.nav_bubble : 0);
+            item.animate().scaleX(sel ? 1.06f : 1f).scaleY(sel ? 1.06f : 1f)
+                    .setDuration(160).start();
+            tint(g.getChildAt(0), sel ? WHITE : 0x99FFFFFF);
             View lb = g.getChildAt(1);
-            if (lb instanceof TextView) ((TextView) lb).setTextColor(sel ? BLUE : WHITE);
+            if (lb instanceof TextView) ((TextView) lb).setTextColor(sel ? WHITE : 0x99FFFFFF);
         } else {
-            tint(g.getChildAt(0), sel ? BLUE : WHITE);
+            item.setBackgroundResource(R.drawable.glass_circle);
+            item.animate().scaleX(sel ? 1.06f : 1f).scaleY(sel ? 1.06f : 1f)
+                    .setDuration(160).start();
+            tint(g.getChildAt(0), sel ? WHITE : 0x99FFFFFF);
         }
     }
 

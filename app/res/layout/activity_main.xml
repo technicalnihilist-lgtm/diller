@@ -18,6 +18,8 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
         android:paddingTop="8dp">
@@ -25,11 +27,13 @@
         <LinearLayout
             android:id="@+id/nav_bar"
             android:layout_width="0dp"
-            android:layout_height="66dp"
+            android:layout_height="70dp"
             android:layout_weight="1"
             android:orientation="horizontal"
-            android:background="@drawable/nav_bar_bg"
-            android:padding="6dp">
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:background="@drawable/nav_bar_glass"
+            android:padding="5dp">
 
             <LinearLayout android:id="@+id/tab_calls" style="@style/NavItem">
                 <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_tab_recents" android:contentDescription="@string/tab_calls" />
@@ -49,12 +53,12 @@
 
         <LinearLayout
             android:id="@+id/nav_shield"
-            android:layout_width="66dp"
-            android:layout_height="66dp"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
             android:layout_marginStart="12dp"
             android:orientation="vertical"
             android:gravity="center"
-            android:background="@drawable/nav_circle">
+            android:background="@drawable/glass_circle">
             <ImageView android:layout_width="26dp" android:layout_height="26dp" android:src="@drawable/ic_tab_shield" android:contentDescription="@string/tab_shield" />
         </LinearLayout>
     </LinearLayout>
