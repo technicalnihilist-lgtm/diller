@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- iOS Phone dark palette -->
+    <color name="bg_black">#FF000000</color>
+    <color name="ios_key">#FF1C1C1E</color>
+    <color name="ios_key_stroke">#FF3A3A3C</color>
+    <color name="ios_nav_bg">#FF1C1C1E</color>
+    <color name="ios_nav_sel">#FF2C2C2E</color>
+    <color name="ios_green">#FF34C759</color>
+    <color name="ios_red">#FFFF3B30</color>
+    <color name="ios_blue">#FF0A84FF</color>
+    <color name="ios_grey">#FF8E8E93</color>
+    <color name="ios_grey2">#FF636366</color>
+    <color name="ios_avatar">#FF5B5FBF</color>
+    <color name="ios_divider">#FF2C2C2E</color>
+    <color name="ios_card">#FF1C1C1E</color>
+
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="text_secondary">#B3FFFFFF</color>
+    <color name="text_tertiary">#80FFFFFF</color>
+    <color name="accent">#FF6FE7FF</color>
+    <color name="call_green">#FF34C759</color>
+    <color name="call_red">#FFFF3B30</color>
+    <color name="danger">#FFFF6B6B</color>
+    <color name="warn">#FFFFC24B</color>
+
+    <!-- Liquid glass palette (call screen) -->
+    <color name="glass_fill">#26FFFFFF</color>
+    <color name="glass_fill_strong">#3DFFFFFF</color>
+    <color name="glass_stroke">#59FFFFFF</color>
+    <color name="blob_a">#FF3A6BFF</color>
+    <color name="blob_b">#FF7A3CFF</color>
+    <color name="blob_c">#FF00D4C8</color>
+    <color name="blob_d">#FFFF5C8A</color>
+</resources>

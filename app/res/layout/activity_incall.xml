@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.diller.app.GlassBackgroundView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:paddingTop="76dp"
+        android:paddingBottom="56dp"
+        android:paddingStart="26dp"
+        android:paddingEnd="26dp">
+
+        <TextView
+            android:id="@+id/incall_avatar"
+            android:layout_width="112dp"
+            android:layout_height="112dp"
+            android:background="@drawable/glass_circle"
+            android:gravity="center"
+            android:textColor="@color/text_primary"
+            android:textSize="46sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/incall_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:textColor="@color/text_primary"
+            android:textSize="30sp"
+            android:textStyle="bold"
+            android:maxLines="1" />
+
+        <TextView
+            android:id="@+id/incall_number"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="17sp" />
+
+        <TextView
+            android:id="@+id/incall_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/glass_pill"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:text="Calling…"
+            android:textColor="@color/accent"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/incall_spam"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/chip_spam"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:text="Possible scam call"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp"
+            android:visibility="gone" />
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <LinearLayout
+            android:id="@+id/incall_utility"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center">
+                <ImageView
+                    android:id="@+id/incall_mute"
+                    android:layout_width="66dp"
+                    android:layout_height="66dp"
+                    android:padding="20dp"
+                    android:background="@drawable/glass_circle"
+                    android:src="@drawable/ic_mic"
+                    android:contentDescription="@string/mute" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/mute"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginStart="44dp">
+                <ImageView
+                    android:id="@+id/incall_speaker"
+                    android:layout_width="66dp"
+                    android:layout_height="66dp"
+                    android:padding="20dp"
+                    android:background="@drawable/glass_circle"
+                    android:src="@drawable/ic_speaker"
+                    android:contentDescription="@string/speaker" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/speaker"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/incall_actions"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginTop="30dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center">
+                <ImageView
+                    android:id="@+id/incall_decline"
+                    android:layout_width="76dp"
+                    android:layout_height="76dp"
+                    android:padding="22dp"
+                    android:background="@drawable/call_btn_red"
+                    android:src="@drawable/ic_call"
+                    android:contentDescription="@string/decline" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/decline"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginStart="62dp">
+                <ImageView
+                    android:id="@+id/incall_answer"
+                    android:layout_width="76dp"
+                    android:layout_height="76dp"
+                    android:padding="22dp"
+                    android:background="@drawable/call_btn_green"
+                    android:src="@drawable/ic_call"
+                    android:contentDescription="@string/answer" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/answer"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/incall_hangup"
+            android:layout_width="76dp"
+            android:layout_height="76dp"
+            android:layout_marginTop="30dp"
+            android:padding="22dp"
+            android:background="@drawable/call_btn_red"
+            android:src="@drawable/ic_call"
+            android:contentDescription="@string/hangup"
+            android:visibility="gone" />
+    </LinearLayout>
+</FrameLayout>
