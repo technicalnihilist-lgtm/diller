@@ -38,8 +38,6 @@ public class AiConfig {
     public String model() { return p.getString("ai_model", "sarvam-105b-conversations"); }
     public void setModel(String v) { p.edit().putString("ai_model", v).apply(); }
 
-    public boolean hasBuiltinKey() { return !builtinKey().isEmpty(); }
-
     public boolean hasKey() {
         String k = key();
         return k != null && !k.trim().isEmpty();

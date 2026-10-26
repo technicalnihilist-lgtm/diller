@@ -61,7 +61,7 @@ public class MainActivity extends Activity {
 
     // keypad
     private TextView dialDisplay, dialSub, dialChip;
-    private ImageView btnBack, btnAdd;
+    private View btnBack, btnAdd;
     private View dialerBanner;
     private final StringBuilder typed = new StringBuilder();
 
@@ -230,10 +230,12 @@ public class MainActivity extends Activity {
             lp.columnSpec = GridLayout.spec(i % 3, 1f);
             lp.width = 0;
             lp.height = 0;
-            lp.setMargins(dp(14), dp(10), dp(14), dp(10));
+
+            FrameLayout cell = new FrameLayout(this);
+            cell.setLayoutParams(lp);
 
             FrameLayout key = new FrameLayout(this);
-            key.setLayoutParams(lp);
+            key.setLayoutParams(new FrameLayout.LayoutParams(dp(78), dp(78), Gravity.CENTER));
             key.setBackgroundResource(R.drawable.key_bg);
 
             LinearLayout inner = new LinearLayout(this);
@@ -244,37 +246,51 @@ public class MainActivity extends Activity {
 
             TextView d = new TextView(this);
             d.setText(digits[i]);
-            d.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
+            d.setTextSize(TypedValue.COMPLEX_UNIT_SP, 36);
             d.setTextColor(WHITE);
             d.setGravity(Gravity.CENTER);
+            d.setTypeface(android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL));
             inner.addView(d);
 
             if (subs[i].length() > 0) {
-                TextView s = new TextView(this);
-                s.setText(subs[i]);
-                s.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
-                s.setTextColor(0xFF8E8E93);
-                s.setGravity(Gravity.CENTER);
-                s.setLetterSpacing(0.12f);
-                inner.addView(s);
+                TextView sub = new TextView(this);
+                sub.setText(subs[i]);
+                sub.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+                sub.setTextColor(WHITE);
+                sub.setGravity(Gravity.CENTER);
+                sub.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+                sub.setLetterSpacing(0.2f);
+                inner.addView(sub);
             }
+
             key.addView(inner);
+            cell.addView(key);
 
             final String val = digits[i];
-            key.setOnClickListener(new View.OnClickListener() {
+            cell.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) { append(val); }
             });
             if ("0".equals(digits[i])) {
-                key.setOnLongClickListener(new View.OnLongClickListener() {
-                    public boolean onLongClick(View v) { append("+"); return true; }
+                cell.setOnLongClickListener(new View.OnLongClickListener() {
+                    public boolean onLongClick(View v) {
+                        try { vKeypad.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS); }
+                        catch (Exception ignored) { }
+                        append("+");
+                        return true;
+                    }
                 });
             }
-            g.addView(key);
+            g.addView(cell);
         }
         host.addView(g);
     }
 
-    private void append(String s) { typed.append(s); updateDisplay(); }
+    private void append(String s) {
+        try { vKeypad.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP); }
+        catch (Exception ignored) { }
+        typed.append(s);
+        updateDisplay();
+    }
 
     private void updateDisplay() {
         String num = typed.toString();
@@ -1011,11 +1027,6 @@ public class MainActivity extends Activity {
         vAi.findViewById(R.id.btn_ai_settings).setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) { showAiSettings(); }
         });
-        // If a key is compiled in, hide the whole key UI from the user.
-        if (new AiConfig(this).hasBuiltinKey()) {
-            View sb = vAi.findViewById(R.id.btn_ai_settings);
-            if (sb != null) sb.setVisibility(View.GONE);
-        }
         refreshAi();
     }
 
