@@ -1011,6 +1011,11 @@ public class MainActivity extends Activity {
         vAi.findViewById(R.id.btn_ai_settings).setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) { showAiSettings(); }
         });
+        // If a key is compiled in, hide the whole key UI from the user.
+        if (new AiConfig(this).hasBuiltinKey()) {
+            View sb = vAi.findViewById(R.id.btn_ai_settings);
+            if (sb != null) sb.setVisibility(View.GONE);
+        }
         refreshAi();
     }
 
