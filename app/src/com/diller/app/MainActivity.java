@@ -574,29 +574,46 @@ public class MainActivity extends Activity {
         public int getCount() { return items.size(); }
         public Object getItem(int i) { return items.get(i); }
         public long getItemId(int i) { return i; }
+        /** Row views looked up once per inflated view instead of on every bind. */
+        class Holder {
+            ImageView dir;
+            TextView name, sub, time, avatar;
+            CallRow row;
+        }
+
         public View getView(int i, View cv, ViewGroup parent) {
-            if (cv == null) cv = getLayoutInflater().inflate(R.layout.item_call, parent, false);
+            Holder h;
+            if (cv == null) {
+                cv = getLayoutInflater().inflate(R.layout.item_call, parent, false);
+                h = new Holder();
+                h.dir = cv.findViewById(R.id.call_dir);
+                h.name = cv.findViewById(R.id.call_name);
+                h.sub = cv.findViewById(R.id.call_sub);
+                h.time = cv.findViewById(R.id.call_time);
+                h.avatar = cv.findViewById(R.id.call_avatar);
+                final Holder fh = h;
+                cv.findViewById(R.id.call_action).setOnClickListener(new View.OnClickListener() {
+                    public void onClick(View v) { if (fh.row != null) placeCall(fh.row.number); }
+                });
+                cv.setClickable(true);
+                cv.setOnTouchListener(new SwipeRowTouchListener(MainActivity.this,
+                        new SwipeRowTouchListener.Callbacks() {
+                            public void onSwipeRight() { if (fh.row != null) placeCall(fh.row.number); }
+                            public void onSwipeLeft() { if (fh.row != null) deleteCall(fh.row.id); }
+                            public void onTap() { if (fh.row != null) placeCall(fh.row.number); }
+                        }, R.drawable.swipe_call, R.drawable.swipe_delete));
+                cv.setTag(h);
+            } else {
+                h = (Holder) cv.getTag();
+            }
             CallRow r = items.get(i);
-            ((ImageView) cv.findViewById(R.id.call_dir)).setImageResource(r.iconRes);
-            TextView nm = cv.findViewById(R.id.call_name);
-            nm.setText(r.title);
-            nm.setTextColor(r.spam ? RED : WHITE);
-            ((TextView) cv.findViewById(R.id.call_sub)).setText(r.sub);
-            ((TextView) cv.findViewById(R.id.call_time)).setText(r.time);
-            String init = r.title.isEmpty() ? "?" : r.title.substring(0, 1).toUpperCase();
-            ((TextView) cv.findViewById(R.id.call_avatar)).setText(init);
-            final String num = r.number;
-            cv.findViewById(R.id.call_action).setOnClickListener(new View.OnClickListener() {
-                public void onClick(View v) { placeCall(num); }
-            });
-            final CallRow row = r;
-            cv.setClickable(true);
-            cv.setOnTouchListener(new SwipeRowTouchListener(MainActivity.this,
-                    new SwipeRowTouchListener.Callbacks() {
-                        public void onSwipeRight() { placeCall(row.number); }
-                        public void onSwipeLeft() { deleteCall(row.id); }
-                        public void onTap() { placeCall(row.number); }
-                    }, R.drawable.swipe_call, R.drawable.swipe_delete));
+            h.row = r;
+            h.dir.setImageResource(r.iconRes);
+            h.name.setText(r.title);
+            h.name.setTextColor(r.spam ? RED : WHITE);
+            h.sub.setText(r.sub);
+            h.time.setText(r.time);
+            h.avatar.setText(r.title.isEmpty() ? "?" : r.title.substring(0, 1).toUpperCase());
             return cv;
         }
     }
@@ -713,25 +730,40 @@ public class MainActivity extends Activity {
         public int getCount() { return items.size(); }
         public Object getItem(int i) { return items.get(i); }
         public long getItemId(int i) { return i; }
+        /** Row views looked up once per inflated view instead of on every bind. */
+        class Holder {
+            TextView name, number, avatar;
+            ContactRow row;
+        }
+
         public View getView(int i, View cv, ViewGroup parent) {
-            if (cv == null) cv = getLayoutInflater().inflate(R.layout.item_contact, parent, false);
+            Holder h;
+            if (cv == null) {
+                cv = getLayoutInflater().inflate(R.layout.item_contact, parent, false);
+                h = new Holder();
+                h.name = cv.findViewById(R.id.contact_name);
+                h.number = cv.findViewById(R.id.contact_number);
+                h.avatar = cv.findViewById(R.id.contact_avatar);
+                final Holder fh = h;
+                cv.findViewById(R.id.contact_call).setOnClickListener(new View.OnClickListener() {
+                    public void onClick(View v) { if (fh.row != null) placeCall(fh.row.number); }
+                });
+                cv.setClickable(true);
+                cv.setOnTouchListener(new SwipeRowTouchListener(MainActivity.this,
+                        new SwipeRowTouchListener.Callbacks() {
+                            public void onSwipeRight() { if (fh.row != null) placeCall(fh.row.number); }
+                            public void onSwipeLeft() { if (fh.row != null) confirmDeleteContact(fh.row); }
+                            public void onTap() { if (fh.row != null) placeCall(fh.row.number); }
+                        }, R.drawable.swipe_call, R.drawable.swipe_delete));
+                cv.setTag(h);
+            } else {
+                h = (Holder) cv.getTag();
+            }
             ContactRow r = items.get(i);
-            ((TextView) cv.findViewById(R.id.contact_name)).setText(r.name);
-            ((TextView) cv.findViewById(R.id.contact_number)).setText(r.number);
-            String init = r.name.isEmpty() ? "?" : r.name.substring(0, 1).toUpperCase();
-            ((TextView) cv.findViewById(R.id.contact_avatar)).setText(init);
-            final String num = r.number;
-            cv.findViewById(R.id.contact_call).setOnClickListener(new View.OnClickListener() {
-                public void onClick(View v) { placeCall(num); }
-            });
-            final ContactRow row = r;
-            cv.setClickable(true);
-            cv.setOnTouchListener(new SwipeRowTouchListener(MainActivity.this,
-                    new SwipeRowTouchListener.Callbacks() {
-                        public void onSwipeRight() { placeCall(row.number); }
-                        public void onSwipeLeft() { confirmDeleteContact(row); }
-                        public void onTap() { placeCall(row.number); }
-                    }, R.drawable.swipe_call, R.drawable.swipe_delete));
+            h.row = r;
+            h.name.setText(r.name);
+            h.number.setText(r.number);
+            h.avatar.setText(r.name.isEmpty() ? "?" : r.name.substring(0, 1).toUpperCase());
             return cv;
         }
     }
