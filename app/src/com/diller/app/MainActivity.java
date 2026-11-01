@@ -41,6 +41,8 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
 
@@ -81,6 +83,10 @@ public class MainActivity extends Activity {
     /** Coalesces contact-search keystrokes into one provider query. */
     private final Handler searchHandler = new Handler(Looper.getMainLooper());
     private Runnable searchPending;
+    /** Contacts queries run off the UI thread so typing and startup never stall. */
+    private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
+    /** Bumped per request; a result whose token is stale is dropped. Main thread only. */
+    private int contactsToken = 0;
 
     // shield
     private TextView screenStatus, shieldPill, blockCount, guardStatus, dialerStatus;
@@ -696,7 +702,26 @@ public class MainActivity extends Activity {
         loadContacts("");
     }
 
+    /** Kicks off the query on a background thread; the list is updated when it returns. */
     private void loadContacts(String filter) {
+        final String f = filter == null ? "" : filter.toLowerCase().trim();
+        final int token = ++contactsToken;
+        ioExecutor.execute(new Runnable() {
+            public void run() {
+                final List<ContactRow> rows = queryContacts(f);
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        // Drop results for an older search, or a dead activity.
+                        if (token != contactsToken || isFinishing() || isDestroyed()) return;
+                        contactsAdapter.set(rows);
+                        contactsEmpty.setVisibility(rows.isEmpty() ? View.VISIBLE : View.GONE);
+                    }
+                });
+            }
+        });
+    }
+
+    private List<ContactRow> queryContacts(String f) {
         List<ContactRow> rows = new ArrayList<>();
         if (checkSelfPermission(Manifest.permission.READ_CONTACTS)
                 == PackageManager.PERMISSION_GRANTED) {
@@ -709,15 +734,17 @@ public class MainActivity extends Activity {
                                 ContactsContract.CommonDataKinds.Phone.NUMBER},
                         null, null,
                         ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC");
-                String f = filter == null ? "" : filter.toLowerCase().trim();
                 if (cur != null) {
                     while (cur.moveToNext()) {
                         long cid = cur.getLong(0);
                         String name = cur.getString(1);
                         String num = cur.getString(2);
                         if (name == null) name = "";
-                        if (!f.isEmpty() && !name.toLowerCase().contains(f)
-                                && (num == null || !num.toLowerCase().contains(f))) continue;
+                        if (!f.isEmpty()) {
+                            String lname = name.toLowerCase();
+                            String lnum = num == null ? "" : num.toLowerCase();
+                            if (!lname.contains(f) && !lnum.contains(f)) continue;
+                        }
                         ContactRow r = new ContactRow();
                         r.contactId = cid;
                         r.name = name.isEmpty() ? "Unknown" : name;
@@ -731,8 +758,7 @@ public class MainActivity extends Activity {
                 if (cur != null) cur.close();
             }
         }
-        contactsAdapter.set(rows);
-        contactsEmpty.setVisibility(rows.isEmpty() ? View.VISIBLE : View.GONE);
+        return rows;
     }
 
     class ContactRow {
@@ -998,6 +1024,8 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         if (searchPending != null) searchHandler.removeCallbacks(searchPending);
         searchPending = null;
+        contactsToken++;            // ignore any query still in flight
+        ioExecutor.shutdownNow();
         super.onDestroy();
     }
 
