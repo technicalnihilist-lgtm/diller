@@ -15,6 +15,8 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.CallLog;
 import android.provider.ContactsContract;
 import android.telecom.TelecomManager;
@@ -76,6 +78,9 @@ public class MainActivity extends Activity {
     private TextView contactsEmpty;
     private EditText search;
     private ContactsAdapter contactsAdapter;
+    /** Coalesces contact-search keystrokes into one provider query. */
+    private final Handler searchHandler = new Handler(Looper.getMainLooper());
+    private Runnable searchPending;
 
     // shield
     private TextView screenStatus, shieldPill, blockCount, guardStatus, dialerStatus;
@@ -674,7 +679,18 @@ public class MainActivity extends Activity {
         });
         search.addTextChangedListener(new TextWatcher() {
             public void beforeTextChanged(CharSequence s, int a, int b, int c) { }
-            public void onTextChanged(CharSequence s, int a, int b, int c) { loadContacts(s.toString()); }
+            public void onTextChanged(CharSequence s, int a, int b, int c) {
+                // Debounce: one contacts query after typing settles, not one per keystroke.
+                final String q = s.toString();
+                if (searchPending != null) searchHandler.removeCallbacks(searchPending);
+                searchPending = new Runnable() {
+                    public void run() {
+                        searchPending = null;
+                        loadContacts(q);
+                    }
+                };
+                searchHandler.postDelayed(searchPending, 220);
+            }
             public void afterTextChanged(Editable s) { }
         });
         loadContacts("");
@@ -976,6 +992,13 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int code, int result, Intent data) {
         super.onActivityResult(code, result, data);
         refreshShield();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (searchPending != null) searchHandler.removeCallbacks(searchPending);
+        searchPending = null;
+        super.onDestroy();
     }
 
     @Override
