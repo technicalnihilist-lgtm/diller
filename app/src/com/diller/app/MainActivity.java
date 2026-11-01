@@ -89,6 +89,8 @@ public class MainActivity extends Activity {
     private int contactsToken = 0;
     /** Same idea for the call log, which is now queried off the UI thread too. */
     private int callsToken = 0;
+    /** Guards against a slow name lookup landing on a newer dialled number. */
+    private int dialNameToken = 0;
 
     // shield
     private TextView screenStatus, shieldPill, blockCount, guardStatus, dialerStatus;
@@ -319,8 +321,23 @@ public class MainActivity extends Activity {
         btnBack.setVisibility(View.VISIBLE);
         btnAdd.setVisibility(View.VISIBLE);
 
-        String name = Contacts.nameFor(this, num);
-        dialSub.setText(name != null ? name : "");
+        // PhoneLookup goes out to the contacts provider (disk, possibly a sync adapter),
+        // so resolve the name on the I/O thread instead of blocking every keypad tap.
+        dialSub.setText("");
+        final String lookup = num;
+        final int nameToken = ++dialNameToken;
+        ioExecutor.execute(new Runnable() {
+            public void run() {
+                if (nameToken != dialNameToken) return;   // superseded while queued
+                final String name = Contacts.nameFor(MainActivity.this, lookup);
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        if (nameToken != dialNameToken || isFinishing() || isDestroyed()) return;
+                        dialSub.setText(name != null ? name : "");
+                    }
+                });
+            }
+        });
 
         SpamEngine.Verdict v = engine.check(num);
         if (v.score >= 55) {
