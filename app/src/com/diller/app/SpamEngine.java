@@ -98,7 +98,7 @@ public class SpamEngine {
     }
 
     private Verdict score(String n) {
-        String digits = n.replaceAll("[^0-9]", "");
+        String digits = digitsOf(n);
 
         if (n.isEmpty() || digits.isEmpty())
             return new Verdict(CAT_UNKNOWN, 35, "Private / no caller ID", false);
@@ -121,7 +121,7 @@ public class SpamEngine {
             return new Verdict(CAT_PREMIUM, 72, "Premium-rate number", false);
 
         // All-same-digit or near-repeated strings (e.g. 999999, 55555)
-        if (digits.length() >= 6 && digits.matches("(\\d)\\1+"))
+        if (digits.length() >= 6 && isRepeated(digits))
             return new Verdict(CAT_SPAM, 78, "Repeated-digit spam pattern", false);
 
         // Simple ascending/descending run
@@ -132,6 +132,27 @@ public class SpamEngine {
             return new Verdict(CAT_UNKNOWN, 45, "Unusual number length", false);
 
         return new Verdict(CAT_SAFE, 5, "Not flagged", false);
+    }
+
+    /** Digit-only copy of n. Hand-rolled: the old replaceAll("[^0-9]", "")
+     *  compiled a Pattern and ran the regex engine on every single score. */
+    private static String digitsOf(String n) {
+        StringBuilder sb = new StringBuilder(n.length());
+        for (int i = 0; i < n.length(); i++) {
+            char ch = n.charAt(i);
+            if (ch >= '0' && ch <= '9') sb.append(ch);
+        }
+        return sb.toString();
+    }
+
+    /** True when every digit is the same, e.g. 999999 / 55555.
+     *  Replaces digits.matches("(\\d)\\1+"), which recompiled a Pattern per call. */
+    private static boolean isRepeated(String d) {
+        char first = d.charAt(0);
+        for (int i = 1; i < d.length(); i++) {
+            if (d.charAt(i) != first) return false;
+        }
+        return true;
     }
 
     private static boolean isSequential(String d, int step) {
