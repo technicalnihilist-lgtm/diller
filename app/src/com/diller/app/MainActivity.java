@@ -91,6 +91,8 @@ public class MainActivity extends Activity {
     private int callsToken = 0;
     /** Guards against a slow name lookup landing on a newer dialled number. */
     private int dialNameToken = 0;
+    /** Same idea for the daily AI summary, which reads the call log. */
+    private int summaryToken = 0;
 
     // shield
     private TextView screenStatus, shieldPill, blockCount, guardStatus, dialerStatus;
@@ -1063,6 +1065,7 @@ public class MainActivity extends Activity {
         searchPending = null;
         contactsToken++;            // ignore any query still in flight
         callsToken++;
+        summaryToken++;
         ioExecutor.shutdownNow();
         super.onDestroy();
     }
@@ -1083,7 +1086,7 @@ public class MainActivity extends Activity {
     private void setupAi() {
         final TextView summary = vAi.findViewById(R.id.ai_summary);
         vAi.findViewById(R.id.btn_summary_refresh).setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) { summary.setText(DailySummary.build(MainActivity.this)); }
+            public void onClick(View v) { loadAiSummary(summary); }
         });
 
         final EditText input = vAi.findViewById(R.id.ai_input);
@@ -1161,7 +1164,26 @@ public class MainActivity extends Activity {
         hist.setText(AiHistory.render(this));
         TextView sum = vAi.findViewById(R.id.ai_summary);
         String cur = sum.getText().toString();
-        if (cur.equals("Tap refresh") || cur.trim().isEmpty()) sum.setText(DailySummary.build(this));
+        if (cur.equals("Tap refresh") || cur.trim().isEmpty()) loadAiSummary(sum);
+    }
+
+    /** Builds the daily summary on the I/O thread. The call-log query used to run on the
+     *  UI thread on every visit to the AI tab, stalling the tab-switch animation. */
+    private void loadAiSummary(final TextView sum) {
+        if (sum == null) return;
+        final int token = ++summaryToken;
+        ioExecutor.execute(new Runnable() {
+            public void run() {
+                final String text = DailySummary.build(MainActivity.this);
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        // Drop results for an older request, or a dead activity.
+                        if (token != summaryToken || isFinishing() || isDestroyed()) return;
+                        sum.setText(text);
+                    }
+                });
+            }
+        });
     }
 
     private void showAiSettings() {
