@@ -87,6 +87,8 @@ public class MainActivity extends Activity {
     private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
     /** Bumped per request; a result whose token is stale is dropped. Main thread only. */
     private int contactsToken = 0;
+    /** Same idea for the call log, which is now queried off the UI thread too. */
+    private int callsToken = 0;
 
     // shield
     private TextView screenStatus, shieldPill, blockCount, guardStatus, dialerStatus;
@@ -509,7 +511,26 @@ public class MainActivity extends Activity {
         loadCalls();
     }
 
+    /** Kicks off the call-log query on a background thread; the list is updated when it returns. */
     private void loadCalls() {
+        final boolean missed = missedOnly;
+        final int token = ++callsToken;
+        ioExecutor.execute(new Runnable() {
+            public void run() {
+                final List<CallRow> rows = queryCalls(missed);
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        // Drop results for an older request, or a dead activity.
+                        if (token != callsToken || isFinishing() || isDestroyed()) return;
+                        recentsAdapter.set(rows);
+                        recentsEmpty.setVisibility(rows.isEmpty() ? View.VISIBLE : View.GONE);
+                    }
+                });
+            }
+        });
+    }
+
+    private List<CallRow> queryCalls(boolean missedOnly) {
         List<CallRow> rows = new ArrayList<>();
         if (checkSelfPermission(Manifest.permission.READ_CALL_LOG)
                 == PackageManager.PERMISSION_GRANTED) {
@@ -547,8 +568,7 @@ public class MainActivity extends Activity {
                 if (cur != null) cur.close();
             }
         }
-        recentsAdapter.set(rows);
-        recentsEmpty.setVisibility(rows.isEmpty() ? View.VISIBLE : View.GONE);
+        return rows;
     }
 
     private static String typeLabel(int t) {
@@ -1025,6 +1045,7 @@ public class MainActivity extends Activity {
         if (searchPending != null) searchHandler.removeCallbacks(searchPending);
         searchPending = null;
         contactsToken++;            // ignore any query still in flight
+        callsToken++;
         ioExecutor.shutdownNow();
         super.onDestroy();
     }
