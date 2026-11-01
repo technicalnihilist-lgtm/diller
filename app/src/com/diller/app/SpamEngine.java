@@ -4,7 +4,9 @@ import android.content.Context;
 import android.content.SharedPreferences;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** On-device scam / spam scoring. No network, no account, nothing leaves the phone. */
 public class SpamEngine {
@@ -29,27 +31,56 @@ public class SpamEngine {
 
     private final SharedPreferences prefs;
 
+    /** Verdicts are immutable, so one shared copy per number is safe and avoids
+     *  re-scoring the same number on every list bind / dialer keystroke. */
+    private static final Map<String, Verdict> CACHE = new ConcurrentHashMap<String, Verdict>();
+    private static final int CACHE_MAX = 512;
+    /** Shared blocklist snapshot; dropped whenever the blocklist changes. */
+    private static volatile Set<String> blocklistCache;
+
     public SpamEngine(Context c) {
         prefs = c.getApplicationContext().getSharedPreferences("diller", Context.MODE_PRIVATE);
     }
 
-    public Set<String> blocklist() {
+    /** Shared, read-only snapshot — avoids a SharedPreferences read + set copy per lookup. */
+    private Set<String> snapshot() {
+        Set<String> cached = blocklistCache;
+        if (cached != null) return cached;
         Set<String> s = prefs.getStringSet("blocklist", null);
-        return s == null ? new HashSet<String>() : new HashSet<String>(s);
+        Set<String> copy = s == null ? new HashSet<String>() : new HashSet<String>(s);
+        blocklistCache = copy;
+        return copy;
+    }
+
+    public Set<String> blocklist() {
+        return new HashSet<String>(snapshot());
     }
     public void block(String n) {
-        Set<String> s = blocklist(); s.add(normalize(n));
+        Set<String> s = new HashSet<String>(snapshot()); s.add(normalize(n));
         prefs.edit().putStringSet("blocklist", s).apply();
+        invalidate(s);
     }
     public void unblock(String n) {
-        Set<String> s = blocklist(); s.remove(normalize(n));
+        Set<String> s = new HashSet<String>(snapshot()); s.remove(normalize(n));
         prefs.edit().putStringSet("blocklist", s).apply();
+        invalidate(s);
     }
-    public boolean isBlocked(String n) { return blocklist().contains(normalize(n)); }
+    public boolean isBlocked(String n) { return snapshot().contains(normalize(n)); }
 
+    private static void invalidate(Set<String> fresh) {
+        blocklistCache = fresh;
+        CACHE.clear();
+    }
+
+    /** Strip everything but digits and a leading '+', without compiling a regex per call. */
     public static String normalize(String n) {
-        if (n == null) return "";
-        return n.replaceAll("[^0-9+]", "");
+        if (n == null || n.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder(n.length());
+        for (int i = 0; i < n.length(); i++) {
+            char ch = n.charAt(i);
+            if ((ch >= '0' && ch <= '9') || (ch == '+' && sb.length() == 0)) sb.append(ch);
+        }
+        return sb.toString();
     }
 
     private static final String[] SCAM_PREFIXES = {
@@ -58,6 +89,15 @@ public class SpamEngine {
 
     public Verdict check(String raw) {
         String n = normalize(raw);
+        Verdict hit = CACHE.get(n);
+        if (hit != null) return hit;
+        Verdict v = score(n);
+        if (CACHE.size() >= CACHE_MAX) CACHE.clear();
+        CACHE.put(n, v);
+        return v;
+    }
+
+    private Verdict score(String n) {
         String digits = n.replaceAll("[^0-9]", "");
 
         if (n.isEmpty() || digits.isEmpty())
