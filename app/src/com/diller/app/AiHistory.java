@@ -27,15 +27,33 @@ public class AiHistory {
             JSONArray out = new JSONArray();
             out.put(e);
             for (int i = 0; i < old.length() && i < MAX; i++) out.put(old.get(i));
-            p.edit().putString("ai_history", out.toString()).apply();
+            String raw = out.toString();
+            p.edit().putString("ai_history", raw).apply();
+            // Prime the render cache so the next render() skips the parse entirely.
+            cachedRaw = raw;
+            cachedRender = null;
         } catch (Exception ignored) { }
     }
 
+    /** Rendered text of the last history we parsed, keyed on the stored JSON string.
+     *  render() is called from the UI thread on every AI-tab refresh (tab switch,
+     *  agent toggle, settings save); without this it re-read prefs, re-parsed the
+     *  JSON array and rebuilt a SimpleDateFormat for the same unchanged text. */
+    private static volatile String cachedRaw;
+    private static volatile String cachedRender;
+
     public static String render(Context c) {
         SharedPreferences p = c.getApplicationContext().getSharedPreferences("diller", Context.MODE_PRIVATE);
+        String raw = p.getString("ai_history", "[]");
+        String hit = cachedRender;
+        if (hit != null && raw.equals(cachedRaw)) return hit;
         try {
-            JSONArray arr = new JSONArray(p.getString("ai_history", "[]"));
-            if (arr.length() == 0) return "No AI activity yet.";
+            JSONArray arr = new JSONArray(raw);
+            if (arr.length() == 0) {
+                cachedRaw = raw;
+                cachedRender = "No AI activity yet.";
+                return cachedRender;
+            }
             SimpleDateFormat f = new SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault());
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < arr.length() && i < 20; i++) {
@@ -46,7 +64,10 @@ public class AiHistory {
                 if (!b.isEmpty()) sb.append("\n    ").append(b);
                 sb.append("\n");
             }
-            return sb.toString();
+            String text = sb.toString();
+            cachedRaw = raw;
+            cachedRender = text;
+            return text;
         } catch (Exception e) {
             return "No AI activity yet.";
         }
