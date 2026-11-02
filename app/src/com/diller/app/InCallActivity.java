@@ -28,6 +28,7 @@ public class InCallActivity extends Activity {
     private long callStart = 0L;
     private boolean timerOn = false;
 
+    private int nameToken = 0;
     private boolean muted = false;
     private boolean speakerOn = false;
     private boolean volumeBoosted = false;
@@ -127,14 +128,33 @@ public class InCallActivity extends Activity {
     }
 
     private void bindNumber(String num) {
-        if (num == null) num = "";
-        String contact = Contacts.nameFor(this, num);
-        String display = contact != null ? contact : (num.isEmpty() ? "Unknown" : num);
+        final String n = num == null ? "" : num;
+        String display = n.isEmpty() ? "Unknown" : n;
         name.setText(display);
-        number.setText(num.isEmpty() ? "No caller ID" : num);
+        number.setText(n.isEmpty() ? "No caller ID" : n);
         avatar.setText(initial(display));
 
-        SpamEngine.Verdict v = new SpamEngine(this).check(num);
+        // PhoneLookup goes out to the contacts provider (disk, possibly a sync adapter).
+        // Resolve the name on a worker thread so the in-call screen paints immediately
+        // instead of blocking onCreate on a provider round-trip.
+        final int token = ++nameToken;
+        if (!n.isEmpty()) {
+            new Thread(new Runnable() {
+                public void run() {
+                    final String contact = Contacts.nameFor(InCallActivity.this, n);
+                    if (contact == null) return;
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            if (token != nameToken || isFinishing() || isDestroyed()) return;
+                            name.setText(contact);
+                            avatar.setText(initial(contact));
+                        }
+                    });
+                }
+            }, "diller-incall-lookup").start();
+        }
+
+        SpamEngine.Verdict v = new SpamEngine(this).check(n);
         if (v.score >= 55) {
             spam.setVisibility(View.VISIBLE);
             spam.setText("Possible scam — " + v.label + " (" + v.score + "/100)");
