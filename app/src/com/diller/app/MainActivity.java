@@ -683,15 +683,28 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void deleteCall(long id) {
-        try {
-            int n = getContentResolver().delete(CallLog.Calls.CONTENT_URI,
-                    CallLog.Calls._ID + "=?", new String[]{String.valueOf(id)});
-            if (n > 0) { toast("Call deleted"); loadCalls(); }
-            else toast("Couldn't delete call");
-        } catch (Exception e) {
-            toast("Couldn't delete — allow the Call log permission");
-        }
+    /** The delete is a provider write (disk, possibly a sync adapter), so it runs on the
+     *  I/O thread; only the toast and the reload hop back to the UI thread. */
+    private void deleteCall(final long id) {
+        ioExecutor.execute(new Runnable() {
+            public void run() {
+                int n = -1;
+                try {
+                    n = getContentResolver().delete(CallLog.Calls.CONTENT_URI,
+                            CallLog.Calls._ID + "=?", new String[]{String.valueOf(id)});
+                } catch (Exception ignored) {
+                }
+                final int deleted = n;
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        if (isFinishing() || isDestroyed()) return;
+                        if (deleted > 0) { toast("Call deleted"); loadCalls(); }
+                        else if (deleted == 0) toast("Couldn't delete call");
+                        else toast("Couldn't delete — allow the Call log permission");
+                    }
+                });
+            }
+        });
     }
 
     private void confirmDeleteContact(final ContactRow row) {
@@ -705,19 +718,34 @@ public class MainActivity extends Activity {
                 .show();
     }
 
-    private void deleteContact(ContactRow row) {
-        try {
-            Uri u = ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, row.contactId);
-            int n = getContentResolver().delete(u, null, null);
-            if (n > 0) {
-                toast("Contact deleted");
-                loadContacts(search == null ? "" : search.getText().toString());
-            } else {
-                toast("Couldn't delete contact");
+    /** Same as deleteCall: the provider write happens off the UI thread. */
+    private void deleteContact(final ContactRow row) {
+        final long cid = row.contactId;
+        ioExecutor.execute(new Runnable() {
+            public void run() {
+                int n = -1;
+                try {
+                    Uri u = ContentUris.withAppendedId(
+                            ContactsContract.Contacts.CONTENT_URI, cid);
+                    n = getContentResolver().delete(u, null, null);
+                } catch (Exception ignored) {
+                }
+                final int deleted = n;
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        if (isFinishing() || isDestroyed()) return;
+                        if (deleted > 0) {
+                            toast("Contact deleted");
+                            loadContacts(search == null ? "" : search.getText().toString());
+                        } else if (deleted == 0) {
+                            toast("Couldn't delete contact");
+                        } else {
+                            toast("Couldn't delete — allow the Contacts permission");
+                        }
+                    }
+                });
             }
-        } catch (Exception e) {
-            toast("Couldn't delete — allow the Contacts permission");
-        }
+        });
     }
 
     // ---------------- contacts ----------------
