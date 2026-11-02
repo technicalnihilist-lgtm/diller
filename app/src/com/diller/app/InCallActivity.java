@@ -191,6 +191,7 @@ public class InCallActivity extends Activity {
     }
 
     private void refresh() {
+        if (isFinishing() || isDestroyed()) return;
         Call c = DillerInCallService.current;
         if (c == null) {
             status.setText("Calling…");
@@ -279,6 +280,14 @@ public class InCallActivity extends Activity {
     protected void onDestroy() {
         if (open == this) open = null;
         handler.removeCallbacks(tick);
+        // Detach from the telecom Call. The Call object outlives this Activity
+        // (it lives in DillerInCallService until the call ends), so a registered
+        // callback would keep the whole view tree of this screen alive.
+        Call c = DillerInCallService.current;
+        if (cb != null && c != null) {
+            try { c.unregisterCallback(cb); } catch (Exception ignored) { }
+        }
+        cb = null;
         super.onDestroy();
     }
 }
