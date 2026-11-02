@@ -18,6 +18,12 @@ public class GlassBackgroundView extends View {
     private float w = 1f, h = 1f;
     private final long t0 = System.nanoTime();
 
+    /** One cached gradient per blob, centred on the origin and reused every frame.
+     *  Gradients used to be rebuilt on each onDraw (4 new shaders x 60fps), which churned
+     *  the heap and caused GC jank; now a shader is only rebuilt when its radius really changes. */
+    private final RadialGradient[] shaders = new RadialGradient[colors.length];
+    private final float[] shaderRadius = new float[colors.length];
+
     public GlassBackgroundView(Context c) { super(c); init(); }
     public GlassBackgroundView(Context c, AttributeSet a) { super(c, a); init(); }
     public GlassBackgroundView(Context c, AttributeSet a, int d) { super(c, a, d); init(); }
@@ -29,6 +35,8 @@ public class GlassBackgroundView extends View {
 
     @Override protected void onSizeChanged(int nw, int nh, int ow, int oh) {
         w = Math.max(1, nw); h = Math.max(1, nh);
+        // Blob radius is relative to the view size, so cached gradients no longer apply.
+        for (int i = 0; i < shaders.length; i++) shaders[i] = null;
         super.onSizeChanged(nw, nh, ow, oh);
     }
 
@@ -39,11 +47,22 @@ public class GlassBackgroundView extends View {
             float cx = w * (0.5f + 0.38f * (float) Math.sin(t * 0.22f + i * 1.7f));
             float cy = h * (0.5f + 0.40f * (float) Math.cos(t * 0.19f + i * 2.3f));
             float r = Math.max(w, h) * (0.36f + 0.05f * (float) Math.sin(t * 0.3f + i));
-            int base = colors[i];
-            int c1 = Color.argb(165, Color.red(base), Color.green(base), Color.blue(base));
-            int c2 = Color.argb(0, Color.red(base), Color.green(base), Color.blue(base));
-            blobPaint.setShader(new RadialGradient(cx, cy, r, c1, c2, Shader.TileMode.CLAMP));
-            canvas.drawCircle(cx, cy, r, blobPaint);
+            // Quantise the radius so the shader is rebuilt only on a visible size change.
+            float qr = Math.max(1f, Math.round(r));
+            RadialGradient g = shaders[i];
+            if (g == null || shaderRadius[i] != qr) {
+                int base = colors[i];
+                int c1 = Color.argb(165, Color.red(base), Color.green(base), Color.blue(base));
+                int c2 = Color.argb(0, Color.red(base), Color.green(base), Color.blue(base));
+                g = new RadialGradient(0f, 0f, qr, c1, c2, Shader.TileMode.CLAMP);
+                shaders[i] = g;
+                shaderRadius[i] = qr;
+            }
+            blobPaint.setShader(g);
+            int save = canvas.save();
+            canvas.translate(cx, cy);
+            canvas.drawCircle(0f, 0f, qr, blobPaint);
+            canvas.restoreToCount(save);
         }
         postInvalidateOnAnimation();
     }
