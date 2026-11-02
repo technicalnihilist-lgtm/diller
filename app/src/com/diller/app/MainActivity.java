@@ -11,6 +11,7 @@ import android.content.ContentUris;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
@@ -54,6 +55,9 @@ public class MainActivity extends Activity {
     private static final int BLUE = 0xFF0A84FF;
     private static final int BLUE_BRIGHT = 0xFF4C9AFF;
     private static final int RED = 0xFFFF453A;
+    /** Pre-built colour lists: setTextColor(int) allocates a new ColorStateList on every call. */
+    private static final ColorStateList NAME_NORMAL = ColorStateList.valueOf(WHITE);
+    private static final ColorStateList NAME_SPAM = ColorStateList.valueOf(RED);
 
     private FrameLayout content;
     private SwipeTabHost root;
@@ -576,6 +580,7 @@ public class MainActivity extends Activity {
                         r.sub = hasName && !r.number.isEmpty() ? r.number : typeLabel(type);
                         r.iconRes = typeIcon(type);
                         r.time = DateUtils.getRelativeTimeSpanString(date).toString();
+                        r.initial = initialOf(r.title);
                         SpamEngine.Verdict v = engine.check(r.number);
                         r.spam = v.score >= 60;
                         if (r.spam) r.sub = "Scam · " + r.sub;
@@ -601,6 +606,14 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** First letter of a row title for the avatar bubble; "?" when there is none.
+     *  Hoisted out of the adapters so scrolling does not allocate a substring plus an
+     *  upper-cased copy of it for every bind. */
+    private static String initialOf(String s) {
+        if (s == null || s.isEmpty()) return "?";
+        return String.valueOf(Character.toUpperCase(s.charAt(0)));
+    }
+
     private static int typeIcon(int t) {
         switch (t) {
             case CallLog.Calls.INCOMING_TYPE: return R.drawable.ic_arrow_in;
@@ -613,6 +626,8 @@ public class MainActivity extends Activity {
 
     class CallRow {
         String title, sub, time, number;
+        /** Avatar letter, computed once per row instead of on every list bind. */
+        String initial;
         long id;
         int iconRes;
         boolean spam;
@@ -660,10 +675,10 @@ public class MainActivity extends Activity {
             h.row = r;
             h.dir.setImageResource(r.iconRes);
             h.name.setText(r.title);
-            h.name.setTextColor(r.spam ? RED : WHITE);
+            h.name.setTextColor(r.spam ? NAME_SPAM : NAME_NORMAL);
             h.sub.setText(r.sub);
             h.time.setText(r.time);
-            h.avatar.setText(r.title.isEmpty() ? "?" : r.title.substring(0, 1).toUpperCase());
+            h.avatar.setText(r.initial);
             return cv;
         }
     }
@@ -788,6 +803,7 @@ public class MainActivity extends Activity {
                         r.contactId = cid;
                         r.name = name.isEmpty() ? "Unknown" : name;
                         r.number = num == null ? "" : num;
+                        r.initial = initialOf(r.name);
                         rows.add(r);
                         if (rows.size() >= 500) break;
                     }
@@ -802,6 +818,8 @@ public class MainActivity extends Activity {
 
     class ContactRow {
         String name, number;
+        /** Avatar letter, computed once per row instead of on every list bind. */
+        String initial;
         long contactId;
     }
 
@@ -844,7 +862,7 @@ public class MainActivity extends Activity {
             h.row = r;
             h.name.setText(r.name);
             h.number.setText(r.number);
-            h.avatar.setText(r.name.isEmpty() ? "?" : r.name.substring(0, 1).toUpperCase());
+            h.avatar.setText(r.initial);
             return cv;
         }
     }
