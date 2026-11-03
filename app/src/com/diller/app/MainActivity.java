@@ -559,10 +559,16 @@ public class MainActivity extends Activity {
                 == PackageManager.PERMISSION_GRANTED) {
             Cursor cur = null;
             try {
+                // Filter missed calls in the query instead of in Java: without a selection
+                // the provider handed back every call ever logged and this loop walked the
+                // whole log (cursor window included) just to collect 250 missed rows.
+                String sel = missedOnly ? CallLog.Calls.TYPE + "=?" : null;
+                String[] selArgs = missedOnly
+                        ? new String[]{String.valueOf(CallLog.Calls.MISSED_TYPE)} : null;
                 cur = getContentResolver().query(CallLog.Calls.CONTENT_URI,
                         new String[]{CallLog.Calls._ID, CallLog.Calls.CACHED_NAME,
                                 CallLog.Calls.NUMBER, CallLog.Calls.TYPE, CallLog.Calls.DATE},
-                        null, null, CallLog.Calls.DATE + " DESC");
+                        sel, selArgs, CallLog.Calls.DATE + " DESC");
                 if (cur != null) {
                     while (cur.moveToNext() && rows.size() < 250) {
                         long callId = cur.getLong(0);
@@ -570,7 +576,6 @@ public class MainActivity extends Activity {
                         String num = cur.getString(2);
                         int type = cur.getInt(3);
                         long date = cur.getLong(4);
-                        if (missedOnly && type != CallLog.Calls.MISSED_TYPE) continue;
 
                         CallRow r = new CallRow();
                         r.id = callId;
