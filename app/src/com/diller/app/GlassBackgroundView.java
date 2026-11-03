@@ -18,6 +18,12 @@ public class GlassBackgroundView extends View {
     private float w = 1f, h = 1f;
     private final long t0 = System.nanoTime();
 
+    /** The blobs drift at ~0.2 rad/s, so 60 redraws a second buy nothing the eye can see.
+     *  The call screen stays up for the whole of a call, so pacing the frame callback at
+     *  ~30fps halves the full-screen GPU work for that time without changing how fast or
+     *  how far the backdrop moves. */
+    private static final long FRAME_MS = 33L;
+
     /** One cached gradient per blob, centred on the origin and reused every frame.
      *  Gradients used to be rebuilt on each onDraw (4 new shaders x 60fps), which churned
      *  the heap and caused GC jank; now a shader is only rebuilt when its radius really changes. */
@@ -64,6 +70,6 @@ public class GlassBackgroundView extends View {
             canvas.drawCircle(0f, 0f, qr, blobPaint);
             canvas.restoreToCount(save);
         }
-        postInvalidateOnAnimation();
+        postInvalidateDelayed(FRAME_MS);
     }
 }
