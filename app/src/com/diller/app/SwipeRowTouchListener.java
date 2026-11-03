@@ -28,6 +28,17 @@ public class SwipeRowTouchListener implements View.OnTouchListener {
 
     private float x0, y0;
     private boolean swiping;
+    /** Background currently applied to the row, so a drag does not re-resolve and
+     *  re-inflate the same drawable on every MOVE event (~60/s while dragging).
+     *  0 means "no background". */
+    private int bgApplied;
+
+    /** Only touch the row's background when the direction actually changes. */
+    private void applyBg(View v, int res) {
+        if (bgApplied == res) return;
+        bgApplied = res;
+        v.setBackgroundResource(res);
+    }
 
     public SwipeRowTouchListener(Context c, Callbacks cb, int bgCall, int bgDelete) {
         this.cb = cb;
@@ -45,7 +56,7 @@ public class SwipeRowTouchListener implements View.OnTouchListener {
                 y0 = e.getY();
                 swiping = false;
                 v.setTranslationX(0f);
-                v.setBackgroundResource(0);
+                applyBg(v, 0);
                 return false;
 
             case MotionEvent.ACTION_MOVE: {
@@ -63,7 +74,7 @@ public class SwipeRowTouchListener implements View.OnTouchListener {
                 }
                 float clamped = Math.max(-maxSwipe, Math.min(maxSwipe, dx));
                 v.setTranslationX(clamped);
-                v.setBackgroundResource(clamped > 0 ? bgCall : bgDelete);
+                applyBg(v, clamped > 0 ? bgCall : bgDelete);
                 return true;
             }
 
@@ -71,7 +82,7 @@ public class SwipeRowTouchListener implements View.OnTouchListener {
             case MotionEvent.ACTION_CANCEL: {
                 if (!swiping) {
                     v.setTranslationX(0f);
-                    v.setBackgroundResource(0);
+                    applyBg(v, 0);
                     // treat as a tap only if the finger barely moved
                     if (e.getActionMasked() == MotionEvent.ACTION_UP
                             && Math.abs(e.getX() - x0) < slop
@@ -96,14 +107,14 @@ public class SwipeRowTouchListener implements View.OnTouchListener {
                             .withEndAction(new Runnable() {
                                 public void run() {
                                     v.setTranslationX(0f);
-                                    v.setBackgroundResource(0);
+                                    applyBg(v, 0);
                                     if (right) cb.onSwipeRight();
                                     else cb.onSwipeLeft();
                                 }
                             }).start();
                 } else {
                     v.animate().translationX(0f).setDuration(130).start();
-                    v.setBackgroundResource(0);
+                    applyBg(v, 0);
                 }
                 return true;
             }
