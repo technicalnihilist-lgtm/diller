@@ -640,7 +640,22 @@ public class MainActivity extends Activity {
 
     class RecentsAdapter extends BaseAdapter {
         final List<CallRow> items = new ArrayList<>();
-        void set(List<CallRow> r) { items.clear(); items.addAll(r); notifyDataSetChanged(); }
+        /** Switching back to this tab re-queries the log; when the rows are unchanged
+         *  skip notifyDataSetChanged so no visible row is rebound for nothing. */
+        void set(List<CallRow> r) {
+            if (same(r)) return;
+            items.clear(); items.addAll(r); notifyDataSetChanged();
+        }
+        private boolean same(List<CallRow> r) {
+            int n = r.size();
+            if (n != items.size()) return false;
+            for (int i = 0; i < n; i++) {
+                CallRow a = items.get(i), b = r.get(i);
+                if (a.id != b.id || a.iconRes != b.iconRes || a.spam != b.spam) return false;
+                if (!a.title.equals(b.title) || !a.sub.equals(b.sub) || !a.time.equals(b.time)) return false;
+            }
+            return true;
+        }
         public int getCount() { return items.size(); }
         public Object getItem(int i) { return items.get(i); }
         public long getItemId(int i) { return i; }
@@ -858,7 +873,21 @@ public class MainActivity extends Activity {
 
     class ContactsAdapter extends BaseAdapter {
         final List<ContactRow> items = new ArrayList<>();
-        void set(List<ContactRow> r) { items.clear(); items.addAll(r); notifyDataSetChanged(); }
+        /** Same as the recents adapter: no rebind when the result set did not change. */
+        void set(List<ContactRow> r) {
+            if (same(r)) return;
+            items.clear(); items.addAll(r); notifyDataSetChanged();
+        }
+        private boolean same(List<ContactRow> r) {
+            int n = r.size();
+            if (n != items.size()) return false;
+            for (int i = 0; i < n; i++) {
+                ContactRow a = items.get(i), b = r.get(i);
+                if (a.contactId != b.contactId) return false;
+                if (!a.name.equals(b.name) || !a.number.equals(b.number)) return false;
+            }
+            return true;
+        }
         public int getCount() { return items.size(); }
         public Object getItem(int i) { return items.get(i); }
         public long getItemId(int i) { return i; }
