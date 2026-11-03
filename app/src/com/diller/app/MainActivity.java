@@ -843,9 +843,10 @@ public class MainActivity extends Activity {
                         String num = cur.getString(2);
                         if (name == null) name = "";
                         if (!f.isEmpty()) {
-                            String lname = name.toLowerCase();
-                            String lnum = num == null ? "" : num.toLowerCase();
-                            if (!lname.contains(f) && !lnum.contains(f)) continue;
+                            // Match in place: toLowerCase() on the name and the number
+                            // built two throwaway Strings for every contact row on every
+                            // keystroke, which is pure garbage for a filtered list.
+                            if (!containsIgnoreCase(name, f) && !containsIgnoreCase(num, f)) continue;
                         }
                         ContactRow r = new ContactRow();
                         r.contactId = cid;
@@ -862,6 +863,19 @@ public class MainActivity extends Activity {
             }
         }
         return rows;
+    }
+
+    /** Case-insensitive "contains" with no allocation: regionMatches compares in place,
+     *  so a search keystroke over a full address book allocates nothing per row. */
+    private static boolean containsIgnoreCase(String hay, String needle) {
+        if (hay == null) return false;
+        int nl = needle.length();
+        if (nl == 0) return true;
+        int last = hay.length() - nl;
+        for (int i = 0; i <= last; i++) {
+            if (hay.regionMatches(true, i, needle, 0, nl)) return true;
+        }
+        return false;
     }
 
     class ContactRow {
