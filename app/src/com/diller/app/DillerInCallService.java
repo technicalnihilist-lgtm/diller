@@ -4,8 +4,11 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.telecom.Call;
 import android.telecom.InCallService;
 
@@ -30,19 +33,10 @@ public class DillerInCallService extends InCallService {
         boolean ringing = call.getState() == Call.STATE_RINGING;
 
         // 0) AI agent: answer unknown / suspected-spam calls on the user's behalf.
+        //    The decision needs a PhoneLookup query (a content-provider round trip),
+        //    so it runs on a worker thread instead of holding up the ringing UI.
         if (ringing && getSharedPreferences("diller", MODE_PRIVATE).getBoolean("ai_agent", false)) {
-            boolean known = Contacts.nameFor(this, number) != null;
-            SpamEngine.Verdict v = new SpamEngine(this).check(number);
-            if (!known || v.score >= 60) {
-                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(new Runnable() {
-                    public void run() {
-                        try { call.answer(android.telecom.VideoProfile.STATE_AUDIO_ONLY); }
-                        catch (Exception ignored) { }
-                    }
-                }, 1800);
-                AiHistory.add(this, "call", "AI agent answered",
-                        (number == null || number.isEmpty() ? "Unknown" : number) + " - " + v.label);
-            }
+            decideAiAnswer(call, number);
         }
 
         // 1) Try to show the activity directly (works when Diller is the default dialer).
@@ -56,6 +50,36 @@ public class DillerInCallService extends InCallService {
         // 2) Fallback: a full-screen-intent notification, in case background
         //    activity starts are restricted on this ROM.
         showCallNotification(number, ringing);
+    }
+
+    /** Scores the caller off the main thread; only the answer itself hops back.
+     *  Same decision as before, minus the blocking contact lookup on the ringing path. */
+    private void decideAiAnswer(final Call call, final String number) {
+        final Context app = getApplicationContext();
+        new Thread(new Runnable() {
+            public void run() {
+                boolean known;
+                String label;
+                int score;
+                try {
+                    known = Contacts.nameFor(app, number) != null;
+                    SpamEngine.Verdict v = new SpamEngine(app).check(number);
+                    label = v.label;
+                    score = v.score;
+                } catch (Exception e) {
+                    return;
+                }
+                if (known && score < 60) return;
+                AiHistory.add(app, "call", "AI agent answered",
+                        (number == null || number.isEmpty() ? "Unknown" : number) + " - " + label);
+                new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                    public void run() {
+                        try { call.answer(android.telecom.VideoProfile.STATE_AUDIO_ONLY); }
+                        catch (Exception ignored) { }
+                    }
+                }, 1800);
+            }
+        }, "diller-ai-decide").start();
     }
 
     private void showCallNotification(String number, boolean ringing) {
