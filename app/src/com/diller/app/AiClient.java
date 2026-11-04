@@ -105,18 +105,37 @@ public class AiClient {
         if (sarvam()) c.setRequestProperty("api-subscription-key", cfg.key());
         else c.setRequestProperty("Authorization", "Bearer " + cfg.key());
 
-        byte[] out = body.toString().getBytes(StandardCharsets.UTF_8);
-        c.setFixedLengthStreamingMode(out.length);
-        OutputStream os = c.getOutputStream();
-        os.write(out);
-        os.flush();
-        os.close();
+        try {
+            byte[] out = body.toString().getBytes(StandardCharsets.UTF_8);
+            c.setFixedLengthStreamingMode(out.length);
+            OutputStream os = c.getOutputStream();
+            try {
+                os.write(out);
+                os.flush();
+            } finally {
+                os.close();
+            }
 
-        int code = c.getResponseCode();
-        InputStream is = (code >= 400) ? c.getErrorStream() : c.getInputStream();
-        String txt = read(is);
-        if (code >= 400) throw new Exception("HTTP " + code + " — " + txt);
-        return new JSONObject(txt);
+            int code = c.getResponseCode();
+            InputStream is = (code >= 400) ? c.getErrorStream() : c.getInputStream();
+            String txt;
+            try {
+                txt = read(is);
+            } finally {
+                // read() closes its reader on success; closing again is harmless and
+                // also covers a reader that threw part-way through the body.
+                if (is != null) {
+                    try { is.close(); } catch (IOException ignored) { }
+                }
+            }
+            if (code >= 400) throw new Exception("HTTP " + code + " — " + txt);
+            return new JSONObject(txt);
+        } finally {
+            // Release the socket (and its pooled connection) as soon as the reply is
+            // read, including when the request or the JSON parse throws. Without this
+            // every AI request left its connection open until the GC finalised it.
+            c.disconnect();
+        }
     }
 
     private static String read(InputStream is) throws IOException {
