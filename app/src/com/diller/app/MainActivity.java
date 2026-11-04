@@ -1002,13 +1002,18 @@ public class MainActivity extends Activity {
         return getSharedPreferences("diller", MODE_PRIVATE);
     }
 
-    private void updateBanner() {
+    /** Takes the already-resolved answer: isDefaultDialer() is a synchronous binder
+     *  round trip to the RoleManager, and the shield refresh asked it twice. */
+    private void updateBanner(boolean defaultDialer) {
         if (dialerBanner != null)
-            dialerBanner.setVisibility(isDefaultDialer() ? View.GONE : View.VISIBLE);
+            dialerBanner.setVisibility(defaultDialer ? View.GONE : View.VISIBLE);
     }
 
     private void refreshShield() {
-        updateBanner();
+        // Resolve the dialer role once and share it with the banner and the status line;
+        // this used to cost two binder calls per resume / tab switch.
+        boolean dialer = isDefaultDialer();
+        updateBanner(dialer);
         boolean roleHeld = false;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             RoleManager rm = getSystemService(RoleManager.class);
@@ -1025,7 +1030,6 @@ public class MainActivity extends Activity {
             shieldPill.setTextColor(roleHeld ? BLUE : 0xFFFFC24B);
         }
 
-        boolean dialer = isDefaultDialer();
         if (dialerStatus != null) {
             dialerStatus.setText(dialer
                     ? "Default phone app: Diller — glass call screen on"
@@ -1169,8 +1173,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        refreshShield();
-        updateBanner();
+        refreshShield();   // also refreshes the default-dialer banner
         updateDisplay();
         if (current == 0) loadCalls();
         if (current == 1) loadContacts(search == null ? "" : search.getText().toString());
