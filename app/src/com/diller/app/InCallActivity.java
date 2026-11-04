@@ -253,7 +253,7 @@ public class InCallActivity extends Activity {
         if (timerOn) return;
         if (callStart == 0L) callStart = System.currentTimeMillis();
         timerOn = true;
-        handler.post(tick);
+        if (screenVisible) handler.post(tick);
     }
 
     private void stopTimer() {
@@ -262,9 +262,33 @@ public class InCallActivity extends Activity {
         callStart = 0L;
     }
 
+    /** True while the call screen is in front. A call outlives the screen — the user
+     *  presses Home, or the proximity sensor blanks it mid-call — and the ticker used to
+     *  keep waking the UI thread once a second for the whole call just to rewrite a
+     *  TextView nobody could see. It now only runs while the screen is actually shown;
+     *  callStart is a wall-clock stamp, so the duration is still correct on return. */
+    private boolean screenVisible = false;
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        screenVisible = true;
+        if (timerOn) {
+            handler.removeCallbacks(tick);
+            handler.post(tick);
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        screenVisible = false;
+        handler.removeCallbacks(tick);
+        super.onStop();
+    }
+
     private final Runnable tick = new Runnable() {
         public void run() {
-            if (!timerOn) return;
+            if (!timerOn || !screenVisible) return;
             long s = (System.currentTimeMillis() - callStart) / 1000L;
             status.setText(String.format("%d:%02d", s / 60, s % 60));
             handler.postDelayed(this, 1000);
