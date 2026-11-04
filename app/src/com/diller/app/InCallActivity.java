@@ -286,11 +286,22 @@ public class InCallActivity extends Activity {
         super.onStop();
     }
 
+    /** Reused by the once-a-second timer; the text is always "m:ss". */
+    private final StringBuilder timeBuf = new StringBuilder(8);
+
     private final Runnable tick = new Runnable() {
         public void run() {
             if (!timerOn || !screenVisible) return;
             long s = (System.currentTimeMillis() - callStart) / 1000L;
-            status.setText(String.format("%d:%02d", s / 60, s % 60));
+            // Hand-rolled "m:ss" on a reused buffer. String.format built a Formatter,
+            // a StringBuilder and boxed two ints every second of every call — steady
+            // garbage on the UI thread behind the animated call screen.
+            long mins = s / 60, secs = s % 60;
+            timeBuf.setLength(0);
+            timeBuf.append(mins).append(':');
+            if (secs < 10) timeBuf.append('0');
+            timeBuf.append(secs);
+            status.setText(timeBuf.toString());
             handler.postDelayed(this, 1000);
         }
     };
