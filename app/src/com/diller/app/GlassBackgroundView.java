@@ -70,6 +70,22 @@ public class GlassBackgroundView extends View {
             canvas.drawCircle(0f, 0f, qr, blobPaint);
             canvas.restoreToCount(save);
         }
-        postInvalidateDelayed(FRAME_MS);
+        // Only keep the frame pump alive while the backdrop is actually on screen.
+        // The call screen is often obscured (another app in front, screen covered by
+        // the proximity sensor); posting a frame every 33ms then only wakes the UI
+        // thread and burns GPU for pixels nobody sees.
+        if (isShown() && getWindowVisibility() == View.VISIBLE) postInvalidateDelayed(FRAME_MS);
+    }
+
+    /** Restart the animation as soon as the view is visible again; a stale invalidate on
+     *  a hidden view is a no-op, so posting unconditionally here is safe. */
+    @Override protected void onWindowVisibilityChanged(int visibility) {
+        super.onWindowVisibilityChanged(visibility);
+        if (visibility == View.VISIBLE) postInvalidate();
+    }
+
+    @Override protected void onVisibilityChanged(View changedView, int visibility) {
+        super.onVisibilityChanged(changedView, visibility);
+        if (visibility == View.VISIBLE) postInvalidate();
     }
 }
