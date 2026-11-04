@@ -562,13 +562,15 @@ public class MainActivity extends Activity {
                 // Filter missed calls in the query instead of in Java: without a selection
                 // the provider handed back every call ever logged and this loop walked the
                 // whole log (cursor window included) just to collect 250 missed rows.
+                // The LIMIT rides along in the sort order so the provider stops after the
+                // 250 newest rows instead of sorting the entire call log first.
                 String sel = missedOnly ? CallLog.Calls.TYPE + "=?" : null;
                 String[] selArgs = missedOnly
                         ? new String[]{String.valueOf(CallLog.Calls.MISSED_TYPE)} : null;
                 cur = getContentResolver().query(CallLog.Calls.CONTENT_URI,
                         new String[]{CallLog.Calls._ID, CallLog.Calls.CACHED_NAME,
                                 CallLog.Calls.NUMBER, CallLog.Calls.TYPE, CallLog.Calls.DATE},
-                        sel, selArgs, CallLog.Calls.DATE + " DESC");
+                        sel, selArgs, CallLog.Calls.DATE + " DESC LIMIT 250");
                 if (cur != null) {
                     while (cur.moveToNext() && rows.size() < 250) {
                         long callId = cur.getLong(0);
