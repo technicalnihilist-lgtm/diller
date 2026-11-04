@@ -21,6 +21,11 @@ public class DillerInCallService extends InCallService {
     static DillerInCallService instance;
     static Call current;
 
+    /** The channel is process-wide and never changes, so it only needs creating once.
+     *  Re-creating it on every call was a binder round-trip to the notification
+     *  manager on the ringing path, before the call screen had painted. */
+    private static volatile boolean channelReady = false;
+
     @Override
     public void onCallAdded(Call call) {
         instance = this;
@@ -85,11 +90,12 @@ public class DillerInCallService extends InCallService {
     private void showCallNotification(String number, boolean ringing) {
         try {
             NotificationManager nm = getSystemService(NotificationManager.class);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!channelReady && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 NotificationChannel ch = new NotificationChannel(
                         CH, "Calls", NotificationManager.IMPORTANCE_HIGH);
                 ch.setDescription("Diller call screen");
                 nm.createNotificationChannel(ch);
+                channelReady = true;
             }
             Intent open = new Intent(this, InCallActivity.class);
             open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);

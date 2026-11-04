@@ -16,6 +16,10 @@ public class DillerScreeningService extends CallScreeningService {
 
     static final String CH = "diller_screen";
 
+    /** Created once per process instead of on every flagged call: each
+     *  createNotificationChannel is an IPC into the notification manager. */
+    private static volatile boolean channelReady = false;
+
     @Override
     public void onScreenCall(Call.Details details) {
         String number = null;
@@ -55,11 +59,12 @@ public class DillerScreeningService extends CallScreeningService {
     private void warn(String number, SpamEngine.Verdict v) {
         try {
             NotificationManager nm = getSystemService(NotificationManager.class);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!channelReady && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 NotificationChannel ch = new NotificationChannel(
                         CH, "Call warnings", NotificationManager.IMPORTANCE_HIGH);
                 ch.setDescription("Warns about suspected scam and spam calls");
                 nm.createNotificationChannel(ch);
+                channelReady = true;
             }
             Intent open = new Intent(this, MainActivity.class);
             open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
