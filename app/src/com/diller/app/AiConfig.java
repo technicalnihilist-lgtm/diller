@@ -17,15 +17,25 @@ public class AiConfig {
         return builtinKey();
     }
 
-    /** Key compiled into personal builds via BuiltinKey (gitignored). Empty in public builds. */
+    /** Key compiled into personal builds via BuiltinKey (gitignored). Empty in public builds.
+     *  Resolved once per process: the old version ran Class.forName on every key()/hasKey()
+     *  call, and in public builds that path throws ClassNotFoundException each time, so
+     *  every AI tap paid for a fresh exception and stack trace. */
+    private static volatile String builtinCache;
+
     private static String builtinKey() {
+        String hit = builtinCache;
+        if (hit != null) return hit;
+        String k = "";
         try {
             Class<?> c = Class.forName("com.diller.app.BuiltinKey");
             Object v = c.getField("KEY").get(null);
-            return v == null ? "" : String.valueOf(v).trim();
+            k = v == null ? "" : String.valueOf(v).trim();
         } catch (Throwable t) {
-            return "";
+            k = "";
         }
+        builtinCache = k;
+        return k;
     }
     public void setKey(String v) { p.edit().putString("ai_key", v).apply(); }
 
