@@ -31,6 +31,11 @@ public class TheftGuardService extends Service {
 
     private static Ringtone alarmTone;
     private static boolean running = false;
+    /** The guard channel never changes, so it only needs creating once per process.
+     *  START_STICKY means the system restarts this service (after a kill, a reboot,
+     *  a SIM change); each restart re-sent the same channel to the notification
+     *  manager, an IPC on the service-start path for nothing. */
+    private static volatile boolean channelReady = false;
 
     private BroadcastReceiver simReceiver;
 
@@ -135,7 +140,13 @@ public class TheftGuardService extends Service {
                 }
             }
         };
-        registerReceiver(simReceiver, new IntentFilter("android.intent.action.SIM_STATE_CHANGED"));
+        // A receiver registration can be refused (restricted process state, a ROM
+        // quirk); an uncaught throw here used to take the whole process down at boot.
+        try {
+            registerReceiver(simReceiver, new IntentFilter("android.intent.action.SIM_STATE_CHANGED"));
+        } catch (Exception e) {
+            simReceiver = null;
+        }
     }
 
     @Override
@@ -156,12 +167,18 @@ public class TheftGuardService extends Service {
     }
 
     private void createChannel() {
+        if (channelReady) return;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager nm = getSystemService(NotificationManager.class);
-            NotificationChannel ch = new NotificationChannel(
-                    CH, getString(R.string.notif_channel_guard), NotificationManager.IMPORTANCE_LOW);
-            ch.setDescription("Ongoing anti-theft monitoring");
-            nm.createNotificationChannel(ch);
+            if (nm != null) {
+                NotificationChannel ch = new NotificationChannel(
+                        CH, getString(R.string.notif_channel_guard), NotificationManager.IMPORTANCE_LOW);
+                ch.setDescription("Ongoing anti-theft monitoring");
+                nm.createNotificationChannel(ch);
+                channelReady = true;
+            }
+        } else {
+            channelReady = true;
         }
     }
 
