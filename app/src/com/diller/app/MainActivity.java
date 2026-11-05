@@ -488,16 +488,29 @@ public class MainActivity extends Activity {
                 .setView(box)
                 .setPositiveButton("Save", new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dlg, int which) {
-                        String nm = nameIn.getText().toString().trim();
-                        String num = numIn.getText().toString().trim();
+                        final String nm = nameIn.getText().toString().trim();
+                        final String num = numIn.getText().toString().trim();
                         if (nm.isEmpty() || num.isEmpty()) { toast("Name and number required"); return; }
-                        if (saveContact(nm, num)) {
-                            toast("Contact saved");
-                            if (current == 1) loadContacts(search == null ? "" : search.getText().toString());
-                            updateDisplay();
-                        } else {
-                            toast("Couldn't save — allow the Contacts permission");
-                        }
+                        // applyBatch goes out to ContactsProvider — disk, and often a sync
+                        // adapter — so it runs on the I/O thread; only the toast and the
+                        // list refresh hop back. Same treatment the call delete already gets.
+                        ioExecutor.execute(new Runnable() {
+                            public void run() {
+                                final boolean ok = saveContact(nm, num);
+                                runOnUiThread(new Runnable() {
+                                    public void run() {
+                                        if (isFinishing() || isDestroyed()) return;
+                                        if (ok) {
+                                            toast("Contact saved");
+                                            if (current == 1) loadContacts(search == null ? "" : search.getText().toString());
+                                            updateDisplay();
+                                        } else {
+                                            toast("Couldn't save — allow the Contacts permission");
+                                        }
+                                    }
+                                });
+                            }
+                        });
                     }
                 })
                 .setNegativeButton("Cancel", null)
