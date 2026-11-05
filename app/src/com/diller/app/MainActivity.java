@@ -64,6 +64,11 @@ public class MainActivity extends Activity {
     private View navCalls, navContacts, navKeypad, navShield, navAi;
     private View vCalls, vContacts, vKeypad, vShield, vAi;
     private int current = 2; // Keypad by default, like the iOS Phone app
+    /** Tab pages / nav items in tab order, built once instead of per switch. */
+    private View[] tabViews;
+    private View[] navViews;
+    /** Which nav item is currently drawn as selected; -1 before the first showTab. */
+    private int styledTab = -1;
 
     private SpamEngine engine;
 
@@ -127,6 +132,8 @@ public class MainActivity extends Activity {
         content.addView(vKeypad);
         content.addView(vShield);
         content.addView(vAi);
+        tabViews = new View[]{vCalls, vContacts, vKeypad, vShield, vAi};
+        navViews = new View[]{navCalls, navContacts, navKeypad, navShield, navAi};
 
         setupKeypad();
         setupCalls();
@@ -162,14 +169,19 @@ public class MainActivity extends Activity {
 
     private void showTab(int i, int dir) {
         current = i;
-        View[] views = {vCalls, vContacts, vKeypad, vShield, vAi};
+        // The tab pages and nav items are built once in onCreate; re-creating these
+        // arrays on every switch allocated two arrays per tap for no reason.
+        View[] views = tabViews;
         for (int k = 0; k < views.length; k++)
             views[k].setVisibility(k == i ? View.VISIBLE : View.GONE);
-        styleNav(navCalls, i == 0);
-        styleNav(navContacts, i == 1);
-        styleNav(navKeypad, i == 2);
-        styleNav(navShield, i == 3);
-        styleNav(navAi, i == 4);
+        // Only the tab leaving and the tab arriving change appearance. Restyling all
+        // five re-resolved the capsule drawable (a fresh Drawable per call) and walked
+        // every nav child to re-apply a colour filter on each switch, mid-animation.
+        if (styledTab != i) {
+            if (styledTab >= 0 && styledTab < navViews.length) styleNav(navViews[styledTab], false);
+            styleNav(navViews[i], true);
+            styledTab = i;
+        }
         if (dir != 0) {
             View in = views[i];
             float w = getResources().getDisplayMetrics().widthPixels;
