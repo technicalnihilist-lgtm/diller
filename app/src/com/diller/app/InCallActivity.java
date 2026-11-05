@@ -24,6 +24,11 @@ public class InCallActivity extends Activity {
     private LinearLayout actions, utility;
 
     private Call.Callback cb;
+    /** The Call that {@link #cb} is actually registered on. Telecom hands out a new
+     *  Call object per call, so the callback must be tracked against the one it was
+     *  attached to — unregistering from whatever is current at teardown used to leave
+     *  the old call still holding a callback (and this whole view tree) forever. */
+    private Call cbCall;
     private final Handler handler = new Handler();
     private long callStart = 0L;
     private boolean timerOn = false;
@@ -117,14 +122,27 @@ public class InCallActivity extends Activity {
             }
         });
 
+        attachCallback();
+        refresh();
+    }
+
+    /** Keeps the state callback attached to the call currently on screen. Called from
+     *  onCreate and again from onNewIntent, because a second call reuses this
+     *  singleTask screen while the previous Call object is a different instance. */
+    private void attachCallback() {
         Call c = DillerInCallService.current;
-        if (c != null) {
+        if (c == cbCall) return;
+        if (cb != null && cbCall != null) {
+            try { cbCall.unregisterCallback(cb); } catch (Exception ignored) { }
+        }
+        cbCall = c;
+        if (c == null) return;
+        if (cb == null) {
             cb = new Call.Callback() {
                 @Override public void onStateChanged(Call call, int state) { refresh(); }
             };
-            try { c.registerCallback(cb); } catch (Exception ignored) { }
         }
-        refresh();
+        try { c.registerCallback(cb); } catch (Exception ignored) { cbCall = null; }
     }
 
     private void bindNumber(String num) {
@@ -169,6 +187,7 @@ public class InCallActivity extends Activity {
         setIntent(intent);
         String num = intent.getStringExtra("number");
         if (num != null) bindNumber(num);
+        attachCallback();
         refresh();
     }
 
@@ -318,10 +337,10 @@ public class InCallActivity extends Activity {
         // Detach from the telecom Call. The Call object outlives this Activity
         // (it lives in DillerInCallService until the call ends), so a registered
         // callback would keep the whole view tree of this screen alive.
-        Call c = DillerInCallService.current;
-        if (cb != null && c != null) {
-            try { c.unregisterCallback(cb); } catch (Exception ignored) { }
+        if (cb != null && cbCall != null) {
+            try { cbCall.unregisterCallback(cb); } catch (Exception ignored) { }
         }
+        cbCall = null;
         cb = null;
         super.onDestroy();
     }
