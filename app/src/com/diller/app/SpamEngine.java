@@ -67,6 +67,10 @@ public class SpamEngine {
     }
     public boolean isBlocked(String n) { return snapshot().contains(normalize(n)); }
 
+    /** Count only. Callers that just print "N numbers blocked" used to call
+     *  blocklist(), which copied the whole set on every shield refresh / resume. */
+    public int blocklistSize() { return snapshot().size(); }
+
     private static void invalidate(Set<String> fresh) {
         blocklistCache = fresh;
         CACHE.clear();

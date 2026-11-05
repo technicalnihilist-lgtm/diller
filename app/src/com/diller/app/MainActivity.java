@@ -1037,9 +1037,11 @@ public class MainActivity extends Activity {
             dialerStatus.setTextColor(dialer ? 0xFF34C759 : 0xFFFFC24B);
         }
 
-        Set<String> bl = engine.blocklist();
+        // Count without copying: refreshShield runs on every resume and tab switch,
+        // and blocklist() handed back a fresh copy of the whole set each time.
+        int blocked = engine.blocklistSize();
         if (blockCount != null)
-            blockCount.setText(bl.size() + " number" + (bl.size() == 1 ? "" : "s") + " blocked");
+            blockCount.setText(blocked + " number" + (blocked == 1 ? "" : "s") + " blocked");
 
         ComponentName cn = new ComponentName(this, AdminReceiver.class);
         DevicePolicyManager dpm = getSystemService(DevicePolicyManager.class);
