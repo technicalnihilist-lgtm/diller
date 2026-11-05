@@ -102,6 +102,10 @@ public class MainActivity extends Activity {
     private int dialNameToken = 0;
     /** Coalesces keypad name-lookups into one provider query once typing pauses. */
     private Runnable dialPending;
+    /** Number the keypad subtitle currently describes, and that subtitle's text.
+     *  Lets updateDisplay() skip the clear + provider lookup when nothing changed. */
+    private String dialNameNum;
+    private String dialNameText = "";
     /** Same idea for the daily AI summary, which reads the call log. */
     private int summaryToken = 0;
 
@@ -346,28 +350,41 @@ public class MainActivity extends Activity {
         // Debounced like the contacts search: typing a ten-digit number used to fire one
         // provider round trip per keystroke on the shared I/O thread, where they also
         // queued ahead of a pending call-log or contacts query.
-        dialSub.setText("");
         final String lookup = num;
         final int nameToken = ++dialNameToken;
-        if (dialPending != null) searchHandler.removeCallbacks(dialPending);
-        dialPending = new Runnable() {
-            public void run() {
-                dialPending = null;
-                ioExecutor.execute(new Runnable() {
-                    public void run() {
-                        if (nameToken != dialNameToken) return;   // superseded while queued
-                        final String name = Contacts.nameFor(MainActivity.this, lookup);
-                        runOnUiThread(new Runnable() {
-                            public void run() {
-                                if (nameToken != dialNameToken || isFinishing() || isDestroyed()) return;
-                                dialSub.setText(name != null ? name : "");
-                            }
-                        });
-                    }
-                });
-            }
-        };
-        searchHandler.postDelayed(dialPending, 180);
+        if (dialPending != null) { searchHandler.removeCallbacks(dialPending); dialPending = null; }
+        // updateDisplay() also runs from onResume(), where the dialled number is
+        // almost always the one already resolved. Blanking the subtitle and firing
+        // another provider round trip made the caller name flicker on every return
+        // to the app; when the number is unchanged the cached text is still correct.
+        if (lookup.equals(dialNameNum)) {
+            dialSub.setText(dialNameText);
+        } else {
+            dialSub.setText("");
+            dialNameNum = null;
+            dialNameText = "";
+            dialPending = new Runnable() {
+                public void run() {
+                    dialPending = null;
+                    ioExecutor.execute(new Runnable() {
+                        public void run() {
+                            if (nameToken != dialNameToken) return;   // superseded while queued
+                            final String name = Contacts.nameFor(MainActivity.this, lookup);
+                            runOnUiThread(new Runnable() {
+                                public void run() {
+                                    if (nameToken != dialNameToken || isFinishing() || isDestroyed()) return;
+                                    final String shown = name != null ? name : "";
+                                    dialNameNum = lookup;
+                                    dialNameText = shown;
+                                    dialSub.setText(shown);
+                                }
+                            });
+                        }
+                    });
+                }
+            };
+            searchHandler.postDelayed(dialPending, 180);
+        }
 
         SpamEngine.Verdict v = engine.check(num);
         if (v.score >= 55) {
