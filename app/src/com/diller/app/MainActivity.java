@@ -95,6 +95,8 @@ public class MainActivity extends Activity {
     private int callsToken = 0;
     /** Guards against a slow name lookup landing on a newer dialled number. */
     private int dialNameToken = 0;
+    /** Coalesces keypad name-lookups into one provider query once typing pauses. */
+    private Runnable dialPending;
     /** Same idea for the daily AI summary, which reads the call log. */
     private int summaryToken = 0;
 
@@ -329,21 +331,31 @@ public class MainActivity extends Activity {
 
         // PhoneLookup goes out to the contacts provider (disk, possibly a sync adapter),
         // so resolve the name on the I/O thread instead of blocking every keypad tap.
+        // Debounced like the contacts search: typing a ten-digit number used to fire one
+        // provider round trip per keystroke on the shared I/O thread, where they also
+        // queued ahead of a pending call-log or contacts query.
         dialSub.setText("");
         final String lookup = num;
         final int nameToken = ++dialNameToken;
-        ioExecutor.execute(new Runnable() {
+        if (dialPending != null) searchHandler.removeCallbacks(dialPending);
+        dialPending = new Runnable() {
             public void run() {
-                if (nameToken != dialNameToken) return;   // superseded while queued
-                final String name = Contacts.nameFor(MainActivity.this, lookup);
-                runOnUiThread(new Runnable() {
+                dialPending = null;
+                ioExecutor.execute(new Runnable() {
                     public void run() {
-                        if (nameToken != dialNameToken || isFinishing() || isDestroyed()) return;
-                        dialSub.setText(name != null ? name : "");
+                        if (nameToken != dialNameToken) return;   // superseded while queued
+                        final String name = Contacts.nameFor(MainActivity.this, lookup);
+                        runOnUiThread(new Runnable() {
+                            public void run() {
+                                if (nameToken != dialNameToken || isFinishing() || isDestroyed()) return;
+                                dialSub.setText(name != null ? name : "");
+                            }
+                        });
                     }
                 });
             }
-        });
+        };
+        searchHandler.postDelayed(dialPending, 180);
 
         SpamEngine.Verdict v = engine.check(num);
         if (v.score >= 55) {
@@ -1165,6 +1177,8 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         if (searchPending != null) searchHandler.removeCallbacks(searchPending);
         searchPending = null;
+        if (dialPending != null) searchHandler.removeCallbacks(dialPending);
+        dialPending = null;
         contactsToken++;            // ignore any query still in flight
         callsToken++;
         summaryToken++;
