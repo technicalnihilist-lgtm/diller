@@ -585,7 +585,12 @@ public class MainActivity extends Activity {
                 loadCalls();
             }
         });
-        loadCalls();
+        // No loadCalls() here on purpose. The recents tab is hidden at launch (the
+        // keypad is the default page), yet this queried the whole call log during
+        // onCreate — a provider round trip plus 250 rows of row building and spam
+        // scoring, on the same cold-start I/O the keypad and contacts were already
+        // competing for. showTab(0) loads the list the first time the tab is shown,
+        // so it looks exactly the same when seen.
     }
 
     /** Kicks off the call-log query on a background thread; the list is updated when it returns. */
@@ -871,7 +876,9 @@ public class MainActivity extends Activity {
             }
             public void afterTextChanged(Editable s) { }
         });
-        loadContacts("");
+        // Same as the recents tab: the contacts tab is hidden at launch, so walking
+        // the address book here only added a second provider scan to cold start.
+        // showTab(1) runs loadContacts() when the tab is first opened.
     }
 
     /** Kicks off the query on a background thread; the list is updated when it returns. */
