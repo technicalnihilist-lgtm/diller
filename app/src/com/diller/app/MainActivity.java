@@ -1308,7 +1308,12 @@ public class MainActivity extends Activity {
         vAi.findViewById(R.id.btn_ai_settings).setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) { showAiSettings(); }
         });
-        refreshAi();
+        // No refreshAi() here on purpose. The AI tab is hidden at launch (the keypad
+        // is the default page), yet this used to render the AI history from prefs and
+        // kick off the daily-summary call-log query during onCreate — UI-thread JSON
+        // parsing plus a third content-provider query on every cold start, for a page
+        // the user often never opens. showTab(4) already calls refreshAi() the first
+        // time the tab is actually shown, so the tab looks exactly the same when seen.
     }
 
     private void refreshAi() {
