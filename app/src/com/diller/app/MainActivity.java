@@ -1225,8 +1225,14 @@ public class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
         super.onRequestPermissionsResult(code, perms, res);
-        loadCalls();
-        loadContacts(search == null ? "" : search.getText().toString());
+        // Only the tab the user can actually see reloads here. Both lists used to be
+        // rebuilt on every permission result regardless of what was granted or which
+        // tab was open, so the first launch (keypad tab, permission dialog answered)
+        // kicked off a full call-log scan and a full address-book walk for two hidden
+        // pages — the same I/O the keypad's first paint was waiting on. showTab() loads
+        // a list the first time that tab is opened, so nothing looks different.
+        if (current == 0) loadCalls();
+        if (current == 1) loadContacts(search == null ? "" : search.getText().toString());
         updateDisplay();
     }
 
