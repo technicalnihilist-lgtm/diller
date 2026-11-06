@@ -30,6 +30,11 @@ public class TheftGuardService extends Service {
     private static final int ALARM_NOTIF_ID = 4102;
 
     private static Ringtone alarmTone;
+    /** The looping waveform below never ends on its own, and stopAlarm() used to stop
+     *  only the ringtone — the vibrator kept running the motor at full duty after the
+     *  alarm was dismissed, until the process died or the phone rebooted. Held so the
+     *  stop path can actually cancel it. */
+    private static Vibrator alarmVib;
     private static boolean running = false;
     /** The guard channel never changes, so it only needs creating once per process.
      *  START_STICKY means the system restarts this service (after a kill, a reboot,
@@ -78,6 +83,7 @@ public class TheftGuardService extends Service {
 
             Vibrator vib = (Vibrator) ctx.getSystemService(Context.VIBRATOR_SERVICE);
             if (vib != null) {
+                alarmVib = vib;
                 long[] pat = {0, 700, 300, 700, 300, 700};
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                     vib.vibrate(VibrationEffect.createWaveform(pat, 0));
@@ -91,6 +97,9 @@ public class TheftGuardService extends Service {
     public static void stopAlarm() {
         try {
             if (alarmTone != null && alarmTone.isPlaying()) alarmTone.stop();
+        } catch (Exception ignored) { }
+        try {
+            if (alarmVib != null) { alarmVib.cancel(); alarmVib = null; }
         } catch (Exception ignored) { }
     }
 
