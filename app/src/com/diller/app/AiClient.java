@@ -15,6 +15,9 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 /**
  * Talks to an AI provider. Works with Sarvam AI (chat + translate) or any
@@ -27,10 +30,23 @@ public class AiClient {
     private final AiConfig cfg;
     private final Handler main = new Handler(Looper.getMainLooper());
 
+    /** Every chat/translate call used to spin up a brand-new OS thread and then throw it
+     *  away — a thread create plus teardown, and a fresh stack reservation, per request.
+     *  Idle workers in this pool are reused instead. Cached (not single-threaded) so a
+     *  summary refresh and a typed question still run side by side, and daemon threads so
+     *  a worker never keeps the process alive. Replies still arrive on the main thread. */
+    private static final ExecutorService NET = Executors.newCachedThreadPool(new ThreadFactory() {
+        public Thread newThread(Runnable r) {
+            Thread t = new Thread(r, "diller-ai");
+            t.setDaemon(true);
+            return t;
+        }
+    });
+
     public AiClient(Context c) { cfg = new AiConfig(c); }
 
     public void chat(final String prompt, final Callback cb) {
-        new Thread(new Runnable() {
+        NET.execute(new Runnable() {
             public void run() {
                 String out;
                 try { out = doChat(prompt); }
@@ -38,11 +54,11 @@ public class AiClient {
                 final String r = out;
                 main.post(new Runnable() { public void run() { cb.onResult(r); } });
             }
-        }).start();
+        });
     }
 
     public void translate(final String text, final String targetCode, final Callback cb) {
-        new Thread(new Runnable() {
+        NET.execute(new Runnable() {
             public void run() {
                 String out;
                 try { out = doTranslate(text, targetCode); }
@@ -50,7 +66,7 @@ public class AiClient {
                 final String r = out;
                 main.post(new Runnable() { public void run() { cb.onResult(r); } });
             }
-        }).start();
+        });
     }
 
     private boolean sarvam() { return "sarvam".equalsIgnoreCase(cfg.provider()); }
