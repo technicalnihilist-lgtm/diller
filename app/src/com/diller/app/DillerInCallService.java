@@ -26,6 +26,22 @@ public class DillerInCallService extends InCallService {
      *  manager on the ringing path, before the call screen had painted. */
     private static volatile boolean channelReady = false;
 
+    /** One reused daemon worker for the AI-answer decision. A fresh OS thread was being
+     *  created (and its stack reserved, then torn down) on every single ring, on the
+     *  same path that already pays for a PhoneLookup round trip. */
+    private static final java.util.concurrent.ExecutorService DECIDE =
+            java.util.concurrent.Executors.newSingleThreadExecutor(
+                    new java.util.concurrent.ThreadFactory() {
+                        public Thread newThread(Runnable r) {
+                            Thread t = new Thread(r, "diller-ai-decide");
+                            t.setDaemon(true);
+                            return t;
+                        }
+                    });
+
+    /** One main-thread handler for the process instead of a new one per incoming call. */
+    private static final Handler MAIN = new Handler(Looper.getMainLooper());
+
     @Override
     public void onCallAdded(Call call) {
         instance = this;
@@ -61,7 +77,7 @@ public class DillerInCallService extends InCallService {
      *  Same decision as before, minus the blocking contact lookup on the ringing path. */
     private void decideAiAnswer(final Call call, final String number) {
         final Context app = getApplicationContext();
-        new Thread(new Runnable() {
+        DECIDE.execute(new Runnable() {
             public void run() {
                 boolean known;
                 String label;
@@ -77,14 +93,14 @@ public class DillerInCallService extends InCallService {
                 if (known && score < 60) return;
                 AiHistory.add(app, "call", "AI agent answered",
                         (number == null || number.isEmpty() ? "Unknown" : number) + " - " + label);
-                new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                MAIN.postDelayed(new Runnable() {
                     public void run() {
                         try { call.answer(android.telecom.VideoProfile.STATE_AUDIO_ONLY); }
                         catch (Exception ignored) { }
                     }
                 }, 1800);
             }
-        }, "diller-ai-decide").start();
+        });
     }
 
     private void showCallNotification(String number, boolean ringing) {
