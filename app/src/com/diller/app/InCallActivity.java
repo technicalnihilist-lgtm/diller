@@ -14,10 +14,33 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+
 /** Full-screen liquid-glass call screen — shown for incoming and outgoing calls. */
 public class InCallActivity extends Activity {
 
     private static InCallActivity open;
+
+    /** One shared worker for the caller-name lookup. bindNumber() used to start a
+     *  brand-new OS thread for every call screen — and again on every onNewIntent —
+     *  paying thread creation and teardown on the most latency-sensitive path in the
+     *  app. A single long-lived daemon worker does the same job with no per-call cost. */
+    private static ExecutorService lookupExecutor;
+
+    private static synchronized ExecutorService lookupExecutor() {
+        if (lookupExecutor == null) {
+            lookupExecutor = Executors.newSingleThreadExecutor(new ThreadFactory() {
+                public Thread newThread(Runnable r) {
+                    Thread t = new Thread(r, "diller-incall-lookup");
+                    t.setDaemon(true);
+                    return t;
+                }
+            });
+        }
+        return lookupExecutor;
+    }
 
     private TextView name, number, status, spam, avatar;
     private ImageView answer, decline, hangup, mute, speaker;
@@ -157,7 +180,7 @@ public class InCallActivity extends Activity {
         // instead of blocking onCreate on a provider round-trip.
         final int token = ++nameToken;
         if (!n.isEmpty()) {
-            new Thread(new Runnable() {
+            lookupExecutor().execute(new Runnable() {
                 public void run() {
                     final String contact = Contacts.nameFor(InCallActivity.this, n);
                     if (contact == null) return;
@@ -169,7 +192,7 @@ public class InCallActivity extends Activity {
                         }
                     });
                 }
-            }, "diller-incall-lookup").start();
+            });
         }
 
         SpamEngine.Verdict v = new SpamEngine(this).check(n);
