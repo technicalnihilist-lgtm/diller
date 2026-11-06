@@ -720,6 +720,13 @@ public class MainActivity extends Activity {
             ImageView dir;
             TextView name, sub, time, avatar;
             CallRow row;
+            /** Last values applied, so a recycled row being rebound to another call
+             *  skips setImageResource (which re-resolves and re-inflates the vector
+             *  drawable) and setTextColor when the direction icon / spam colour is
+             *  unchanged. During a fling most rebinds keep both, so the bind path
+             *  stops allocating a Drawable per row. */
+            int iconRes;
+            ColorStateList nameColor;
         }
 
         public View getView(int i, View cv, ViewGroup parent) {
@@ -749,9 +756,16 @@ public class MainActivity extends Activity {
             }
             CallRow r = items.get(i);
             h.row = r;
-            h.dir.setImageResource(r.iconRes);
+            if (h.iconRes != r.iconRes) {
+                h.dir.setImageResource(r.iconRes);
+                h.iconRes = r.iconRes;
+            }
             h.name.setText(r.title);
-            h.name.setTextColor(r.spam ? NAME_SPAM : NAME_NORMAL);
+            final ColorStateList color = r.spam ? NAME_SPAM : NAME_NORMAL;
+            if (h.nameColor != color) {
+                h.name.setTextColor(color);
+                h.nameColor = color;
+            }
             h.sub.setText(r.sub);
             h.time.setText(r.time);
             h.avatar.setText(r.initial);
