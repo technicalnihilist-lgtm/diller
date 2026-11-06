@@ -106,10 +106,14 @@ public class TheftGuardService extends Service {
     private static void alertNotification(Context ctx, String reason) {
         NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        // The alarm path can fire repeatedly (a SIM flap re-triggers it), and every
+        // createNotificationChannel is an IPC into the notification manager. The channel
+        // never changes, so create it once per process — same guard createChannel() uses.
+        if (!channelReady && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel ch = new NotificationChannel(
                     CH, "Theft alerts", NotificationManager.IMPORTANCE_HIGH);
             nm.createNotificationChannel(ch);
+            channelReady = true;
         }
         Intent open = new Intent(ctx, MainActivity.class);
         open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
