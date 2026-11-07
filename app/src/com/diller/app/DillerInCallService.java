@@ -95,8 +95,15 @@ public class DillerInCallService extends InCallService {
                         (number == null || number.isEmpty() ? "Unknown" : number) + " - " + label);
                 MAIN.postDelayed(new Runnable() {
                     public void run() {
-                        try { call.answer(android.telecom.VideoProfile.STATE_AUDIO_ONLY); }
-                        catch (Exception ignored) { }
+                        // The 1.8s grace period is long enough for the user to decline the
+                        // call, or for the caller to hang up. Calling answer() on a call
+                        // that is no longer ringing threw (caught, so silently) and, when
+                        // the user had just rejected the call, could still connect it.
+                        // Only answer a call that is still actually ringing.
+                        try {
+                            if (call.getState() != Call.STATE_RINGING) return;
+                            call.answer(android.telecom.VideoProfile.STATE_AUDIO_ONLY);
+                        } catch (Exception ignored) { }
                     }
                 }, 1800);
             }
