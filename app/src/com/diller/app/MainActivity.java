@@ -1133,6 +1133,13 @@ public class MainActivity extends Activity {
         // this used to cost two binder calls per resume / tab switch.
         boolean dialer = isDefaultDialer();
         updateBanner(dialer);
+        // Everything below only paints the Shield page. onResume() calls this on every
+        // resume — including the first one at cold start — but the Shield page is built
+        // lazily, so until that tab has been opened these fields are still null and the
+        // work is thrown away: a RoleManager binder call, a blocklist read and a
+        // DevicePolicyManager binder call on the startup path. showTab(3) refreshes the
+        // page as soon as it is created, so it is never shown with stale text.
+        if (vShield == null) return;
         boolean roleHeld = false;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             RoleManager rm = getSystemService(RoleManager.class);
