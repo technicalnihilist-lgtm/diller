@@ -152,10 +152,20 @@ public class SpamEngine {
     }
 
     /** Digit-only copy of n. Hand-rolled: the old replaceAll("[^0-9]", "")
-     *  compiled a Pattern and ran the regex engine on every single score. */
+     *  compiled a Pattern and ran the regex engine on every single score.
+     *  score() is reached through normalize(), so the common case is already
+     *  digits-only; returning the argument then skips the StringBuilder plus the
+     *  second copy of the number that this allocated for every scored call-log row
+     *  (250 per recents load), every keypad keystroke and every screened call. */
     private static String digitsOf(String n) {
+        int i = 0;
+        for (; i < n.length(); i++) {
+            char ch = n.charAt(i);
+            if (ch < '0' || ch > '9') break;
+        }
+        if (i == n.length()) return n;   // nothing to strip
         StringBuilder sb = new StringBuilder(n.length());
-        for (int i = 0; i < n.length(); i++) {
+        for (i = 0; i < n.length(); i++) {
             char ch = n.charAt(i);
             if (ch >= '0' && ch <= '9') sb.append(ch);
         }
