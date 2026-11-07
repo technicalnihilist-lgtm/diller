@@ -126,24 +126,15 @@ public class MainActivity extends Activity {
         navShield = findViewById(R.id.nav_shield);
         navAi = findViewById(R.id.tab_ai);
 
-        vCalls = getLayoutInflater().inflate(R.layout.view_recents, content, false);
-        vContacts = getLayoutInflater().inflate(R.layout.view_contacts, content, false);
-        vKeypad = getLayoutInflater().inflate(R.layout.view_keypad, content, false);
-        vShield = getLayoutInflater().inflate(R.layout.view_shield, content, false);
-        vAi = getLayoutInflater().inflate(R.layout.view_ai, content, false);
-        content.addView(vCalls);
-        content.addView(vContacts);
-        content.addView(vKeypad);
-        content.addView(vShield);
-        content.addView(vAi);
-        tabViews = new View[]{vCalls, vContacts, vKeypad, vShield, vAi};
+        // Only the page the app actually opens on is inflated during cold start.
+        // All five used to be inflated here — ~480 lines of layout parsed, plus five
+        // adapters, their listeners and switches built — for pages that are hidden at
+        // launch (the keypad is the default) and that the user may never open. The
+        // layouts have not changed and neither has any page; they are simply created
+        // by inflateTab() the first time their tab is shown.
+        tabViews = new View[5];
         navViews = new View[]{navCalls, navContacts, navKeypad, navShield, navAi};
-
-        setupKeypad();
-        setupCalls();
-        setupContacts();
-        setupShield();
-        setupAi();
+        inflateTab(2);   // keypad — the page the app opens on
 
         navCalls.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { showTab(0); } });
         navContacts.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { showTab(1); } });
@@ -171,13 +162,66 @@ public class MainActivity extends Activity {
 
     private void showTab(int i) { showTab(i, 0); }
 
+    /** Creates a tab page on first use. Each page is inflated and wired at most once,
+     *  and every view field it owns (adapter, list, switch, banner) is set before its
+     *  setup method returns, so the tab behaves exactly as it did when all five pages
+     *  were built up front. */
+    private View inflateTab(int i) {
+        View v;
+        switch (i) {
+            case 0:
+                v = getLayoutInflater().inflate(R.layout.view_recents, content, false);
+                vCalls = v;
+                content.addView(v);
+                tabViews[0] = v;
+                setupCalls();
+                break;
+            case 1:
+                v = getLayoutInflater().inflate(R.layout.view_contacts, content, false);
+                vContacts = v;
+                content.addView(v);
+                tabViews[1] = v;
+                setupContacts();
+                break;
+            case 2:
+                v = getLayoutInflater().inflate(R.layout.view_keypad, content, false);
+                vKeypad = v;
+                content.addView(v);
+                tabViews[2] = v;
+                setupKeypad();
+                break;
+            case 3:
+                v = getLayoutInflater().inflate(R.layout.view_shield, content, false);
+                vShield = v;
+                content.addView(v);
+                tabViews[3] = v;
+                setupShield();
+                break;
+            case 4:
+                v = getLayoutInflater().inflate(R.layout.view_ai, content, false);
+                vAi = v;
+                content.addView(v);
+                tabViews[4] = v;
+                setupAi();
+                break;
+            default:
+                return vKeypad;
+        }
+        return v;
+    }
+
     private void showTab(int i, int dir) {
         current = i;
-        // The tab pages and nav items are built once in onCreate; re-creating these
+        // Pages that have never been opened are still null here; build this one before
+        // it is shown, then only the two views that actually change visibility.
+        if (tabViews[i] == null) inflateTab(i);
+        // The tab pages and nav items are built once; re-creating these
         // arrays on every switch allocated two arrays per tap for no reason.
         View[] views = tabViews;
-        for (int k = 0; k < views.length; k++)
-            views[k].setVisibility(k == i ? View.VISIBLE : View.GONE);
+        for (int k = 0; k < views.length; k++) {
+            View page = views[k];
+            if (page != null) page.setVisibility(k == i ? View.VISIBLE : View.GONE);
+        }
         // Only the tab leaving and the tab arriving change appearance. Restyling all
         // five re-resolved the capsule drawable (a fresh Drawable per call) and walked
         // every nav child to re-apply a colour filter on each switch, mid-animation.
