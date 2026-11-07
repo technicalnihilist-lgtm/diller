@@ -162,15 +162,27 @@ public class TheftGuardService extends Service {
         }
     }
 
+    /** The ongoing notification never changes while the service lives, yet every start
+     *  command rebuilt it and pushed it through startForeground again — a Notification
+     *  build plus a binder IPC into the notification manager. The guard is started
+     *  more than once in normal use (boot receiver, the shield switch, a START_STICKY
+     *  restart), so build it once and post it only when this instance is not already
+     *  in the foreground. */
+    private Notification ongoing;
+    private boolean foreground = false;
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Notification n = buildOngoing();
-        try {
-            if (Build.VERSION.SDK_INT >= 34)
-                startForeground(NOTIF_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
-            else
-                startForeground(NOTIF_ID, n);
-        } catch (Exception ignored) { }
+        if (!foreground) {
+            if (ongoing == null) ongoing = buildOngoing();
+            try {
+                if (Build.VERSION.SDK_INT >= 34)
+                    startForeground(NOTIF_ID, ongoing, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+                else
+                    startForeground(NOTIF_ID, ongoing);
+                foreground = true;
+            } catch (Exception ignored) { }
+        }
 
         if (intent != null && "alarm".equals(intent.getAction())) {
             triggerAlarm(this, intent.getStringExtra("reason") == null
