@@ -79,6 +79,19 @@ public class SpamEngine {
     /** Strip everything but digits and a leading '+', without compiling a regex per call. */
     public static String normalize(String n) {
         if (n == null || n.isEmpty()) return "";
+        // Fast path: the call log, the dialer and the screening service almost always
+        // hand us a number that is already digits-only (optionally with a leading '+').
+        // Returning the input as-is skips the StringBuilder plus the second String that
+        // the copy below allocates. normalize() runs for every number in the recents
+        // list (250 per load), on every keypad keystroke and on every spam lookup.
+        boolean clean = true;
+        for (int i = 0; i < n.length(); i++) {
+            char ch = n.charAt(i);
+            if ((ch >= '0' && ch <= '9') || (ch == '+' && i == 0)) continue;
+            clean = false;
+            break;
+        }
+        if (clean) return n;
         StringBuilder sb = new StringBuilder(n.length());
         for (int i = 0; i < n.length(); i++) {
             char ch = n.charAt(i);
