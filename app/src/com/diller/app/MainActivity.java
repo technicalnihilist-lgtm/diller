@@ -98,6 +98,16 @@ public class MainActivity extends Activity {
     private int contactsToken = 0;
     /** Same idea for the call log, which is now queried off the UI thread too. */
     private int callsToken = 0;
+    /** True while a list query is still on the I/O thread, plus the filter it was
+     *  started with. showTab() and onResume() both ask for a reload, so tapping
+     *  between tabs (or resuming straight after a switch) queued a second full
+     *  call-log scan / address-book walk behind the first, and the token then threw
+     *  its answer away. Skipping the duplicate is safe: the query already running was
+     *  started from the same state and its result is what the new request would get. */
+    private boolean callsLoading = false;
+    private boolean callsLoadingMissed = false;
+    private boolean contactsLoading = false;
+    private String contactsLoadingFilter = "";
     /** Guards against a slow name lookup landing on a newer dialled number. */
     private int dialNameToken = 0;
     /** Coalesces keypad name-lookups into one provider query once typing pauses. */
@@ -640,6 +650,11 @@ public class MainActivity extends Activity {
     /** Kicks off the call-log query on a background thread; the list is updated when it returns. */
     private void loadCalls() {
         final boolean missed = missedOnly;
+        // A query for this exact filter is already in flight; its result is this
+        // request's result too, so do not queue a duplicate provider scan behind it.
+        if (callsLoading && callsLoadingMissed == missed) return;
+        callsLoading = true;
+        callsLoadingMissed = missed;
         final int token = ++callsToken;
         ioExecutor.execute(new Runnable() {
             public void run() {
@@ -647,7 +662,9 @@ public class MainActivity extends Activity {
                 runOnUiThread(new Runnable() {
                     public void run() {
                         // Drop results for an older request, or a dead activity.
-                        if (token != callsToken || isFinishing() || isDestroyed()) return;
+                        if (token != callsToken) return;
+                        callsLoading = false;
+                        if (isFinishing() || isDestroyed()) return;
                         recentsAdapter.set(rows);
                         recentsEmpty.setVisibility(rows.isEmpty() ? View.VISIBLE : View.GONE);
                     }
@@ -928,6 +945,10 @@ public class MainActivity extends Activity {
     /** Kicks off the query on a background thread; the list is updated when it returns. */
     private void loadContacts(String filter) {
         final String f = filter == null ? "" : filter.toLowerCase().trim();
+        // Same coalescing as loadCalls(): one in-flight query per filter is enough.
+        if (contactsLoading && f.equals(contactsLoadingFilter)) return;
+        contactsLoading = true;
+        contactsLoadingFilter = f;
         final int token = ++contactsToken;
         ioExecutor.execute(new Runnable() {
             public void run() {
@@ -935,7 +956,9 @@ public class MainActivity extends Activity {
                 runOnUiThread(new Runnable() {
                     public void run() {
                         // Drop results for an older search, or a dead activity.
-                        if (token != contactsToken || isFinishing() || isDestroyed()) return;
+                        if (token != contactsToken) return;
+                        contactsLoading = false;
+                        if (isFinishing() || isDestroyed()) return;
                         contactsAdapter.set(rows);
                         contactsEmpty.setVisibility(rows.isEmpty() ? View.VISIBLE : View.GONE);
                     }
