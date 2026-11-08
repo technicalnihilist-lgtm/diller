@@ -83,11 +83,17 @@ public class TheftGuardService extends Service {
 
             Vibrator vib = (Vibrator) ctx.getSystemService(Context.VIBRATOR_SERVICE);
             if (vib != null) {
-                alarmVib = vib;
-                long[] pat = {0, 700, 300, 700, 300, 700};
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                    vib.vibrate(VibrationEffect.createWaveform(pat, 0));
-                else vib.vibrate(pat, 0);
+                // Only start the motor if it is not already running. The waveform below
+                // repeats forever, and a repeat trigger — every failed unlock past the
+                // threshold, or a SIM flap — re-armed it from the top, so the alarm kept
+                // re-driving the vibrator on each one instead of simply continuing.
+                if (alarmVib == null) {
+                    alarmVib = vib;
+                    long[] pat = {0, 700, 300, 700, 300, 700};
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                        vib.vibrate(VibrationEffect.createWaveform(pat, 0));
+                    else vib.vibrate(pat, 0);
+                }
             }
 
             alertNotification(ctx, reason);
@@ -227,6 +233,12 @@ public class TheftGuardService extends Service {
     @Override
     public void onDestroy() {
         running = false;
+        // The ringtone and the never-ending vibration waveform outlive this service if
+        // nothing cancels them: a START_STICKY restart, a low-memory kill, or the guard
+        // being switched off elsewhere would otherwise leave the alarm sounding and the
+        // motor running at full duty until the device reboots. stop() covers the explicit
+        // off-switch; this covers every other way the service can go away.
+        stopAlarm();
         if (simReceiver != null) {
             try { unregisterReceiver(simReceiver); } catch (Exception ignored) { }
         }
