@@ -50,6 +50,8 @@ public class MainActivity extends Activity {
     private static final int REQ_PERMS = 10;
     private static final int REQ_SCREEN = 11;
     private static final int REQ_DIALER = 12;
+    /** Rows the Contacts tab ever keeps; pushed into the provider query as a LIMIT. */
+    private static final int CONTACT_ROWS = 500;
 
     private static final int WHITE = 0xFFFFFFFF;
     private static final int BLUE = 0xFF0A84FF;
@@ -980,13 +982,7 @@ public class MainActivity extends Activity {
                 == PackageManager.PERMISSION_GRANTED) {
             Cursor cur = null;
             try {
-                cur = getContentResolver().query(
-                        ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                        new String[]{ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
-                                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-                                ContactsContract.CommonDataKinds.Phone.NUMBER},
-                        null, null,
-                        ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC");
+                cur = openContactsCursor();
                 if (cur != null) {
                     while (cur.moveToNext()) {
                         long cid = cur.getLong(0);
@@ -1005,7 +1001,7 @@ public class MainActivity extends Activity {
                         r.number = num == null ? "" : num;
                         r.initial = initialOf(r.name);
                         rows.add(r);
-                        if (rows.size() >= 500) break;
+                        if (rows.size() >= CONTACT_ROWS) break;
                     }
                 }
             } catch (Exception ignored) {
@@ -1014,6 +1010,35 @@ public class MainActivity extends Activity {
             }
         }
         return rows;
+    }
+
+    /** The address-book cursor, with the row cap pushed down into the provider.
+     *  queryContacts only ever keeps CONTACT_ROWS rows, but the query itself had no
+     *  LIMIT, so the provider still walked and sorted the entire address book — on a
+     *  phone with a few thousand numbers, every open of the Contacts tab and every
+     *  search keystroke paid to sort all of them and to fill a cursor window with
+     *  rows that were then dropped in Java. Same trick the call-log query already
+     *  uses; a provider that rejects the suffix falls back to the plain query. */
+    private Cursor openContactsCursor() {
+        String order = ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC";
+        try {
+            return contactsQuery(order + " LIMIT " + CONTACT_ROWS);
+        } catch (Exception e) {
+            try {
+                return contactsQuery(order);
+            } catch (Exception ignored) {
+                return null;
+            }
+        }
+    }
+
+    private Cursor contactsQuery(String sortOrder) {
+        return getContentResolver().query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                new String[]{ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+                        ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                        ContactsContract.CommonDataKinds.Phone.NUMBER},
+                null, null, sortOrder);
     }
 
     /** Case-insensitive "contains" with no allocation: regionMatches compares in place,
