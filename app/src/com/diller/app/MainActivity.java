@@ -118,6 +118,13 @@ public class MainActivity extends Activity {
     private String dialNameText = "";
     /** Same idea for the daily AI summary, which reads the call log. */
     private int summaryToken = 0;
+    /** True while a daily-summary build is already on the I/O thread. refreshAi() runs
+     *  from the AI tab switch, the agent switch and every settings save, and while the
+     *  summary still reads "Tap refresh" each of those queued another full call-log
+     *  scan behind the one already running on the shared single I/O thread — where it
+     *  also delayed a pending recents or contacts query. One in-flight build is enough:
+     *  it reads the same log and its answer is the one the tab will show. */
+    private boolean summaryLoading = false;
 
     // shield
     private TextView screenStatus, shieldPill, blockCount, guardStatus, dialerStatus;
@@ -1434,12 +1441,15 @@ public class MainActivity extends Activity {
      *  UI thread on every visit to the AI tab, stalling the tab-switch animation. */
     private void loadAiSummary(final TextView sum) {
         if (sum == null) return;
+        if (summaryLoading) return;   // a build for this same log is already running
+        summaryLoading = true;
         final int token = ++summaryToken;
         ioExecutor.execute(new Runnable() {
             public void run() {
                 final String text = DailySummary.build(MainActivity.this);
                 runOnUiThread(new Runnable() {
                     public void run() {
+                        summaryLoading = false;
                         // Drop results for an older request, or a dead activity.
                         if (token != summaryToken || isFinishing() || isDestroyed()) return;
                         sum.setText(text);
