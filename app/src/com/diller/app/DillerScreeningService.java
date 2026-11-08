@@ -31,14 +31,6 @@ public class DillerScreeningService extends CallScreeningService {
         SpamEngine engine = new SpamEngine(this);
         SpamEngine.Verdict v = engine.check(number);
 
-        getSharedPreferences("diller", MODE_PRIVATE).edit()
-                .putString("last_number", number == null ? "" : number)
-                .putString("last_label", v.label)
-                .putString("last_category", v.category)
-                .putInt("last_score", v.score)
-                .putLong("last_time", System.currentTimeMillis())
-                .apply();
-
         CallScreeningService.CallResponse.Builder b =
                 new CallScreeningService.CallResponse.Builder();
 
@@ -49,7 +41,22 @@ public class DillerScreeningService extends CallScreeningService {
             b.setDisallowCall(false).setRejectCall(false)
                     .setSkipCallLog(false).setSkipNotification(false);
         }
+        // Reply to Telecom first: this is the time-critical step and the framework
+        // gives a screening service only a few seconds to answer. The verdict write
+        // below goes through SharedPreferences, which on a cold start loads and
+        // parses the prefs file from disk on the calling thread — so it used to sit
+        // between the caller ID arriving and the call being allowed through. The
+        // write is still fire-and-forget (.apply()) and nothing in this method reads
+        // it back, so moving it after respondToCall() changes no behaviour.
         respondToCall(details, b.build());
+
+        getSharedPreferences("diller", MODE_PRIVATE).edit()
+                .putString("last_number", number == null ? "" : number)
+                .putString("last_label", v.label)
+                .putString("last_category", v.category)
+                .putInt("last_score", v.score)
+                .putLong("last_time", System.currentTimeMillis())
+                .apply();
 
         if (!v.block && v.score >= 60) {
             warn(number, v);
