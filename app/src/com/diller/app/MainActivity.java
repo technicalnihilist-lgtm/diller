@@ -60,6 +60,12 @@ public class MainActivity extends Activity {
     /** Pre-built colour lists: setTextColor(int) allocates a new ColorStateList on every call. */
     private static final ColorStateList NAME_NORMAL = ColorStateList.valueOf(WHITE);
     private static final ColorStateList NAME_SPAM = ColorStateList.valueOf(RED);
+    /** One shared Typeface for the keypad digits. Typeface.create() resolves the font
+     *  family through a native call and hands back a new object, and buildGrid() called it
+     *  once per digit key — twelve lookups and twelve throwaway Typefaces on the cold-start
+     *  path (the keypad is the page built during onCreate) for the same font every time. */
+    private static final android.graphics.Typeface KEYPAD_LIGHT =
+            android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL);
 
     private FrameLayout content;
     private SwipeTabHost root;
@@ -354,7 +360,7 @@ public class MainActivity extends Activity {
             d.setTextSize(TypedValue.COMPLEX_UNIT_SP, 36);
             d.setTextColor(WHITE);
             d.setGravity(Gravity.CENTER);
-            d.setTypeface(android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL));
+            d.setTypeface(KEYPAD_LIGHT);
             inner.addView(d);
 
             if (subs[i].length() > 0) {
