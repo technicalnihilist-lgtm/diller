@@ -1194,7 +1194,15 @@ public class MainActivity extends Activity {
         // work is thrown away: a RoleManager binder call, a blocklist read and a
         // DevicePolicyManager binder call on the startup path. showTab(3) refreshes the
         // page as soon as it is created, so it is never shown with stale text.
-        if (vShield == null) return;
+        //
+        // Same reasoning once the page does exist: onResume() refreshes on every resume —
+        // after every call, every return from another app — while the Shield page is
+        // usually not the tab in front. The block below costs a RoleManager binder call,
+        // a DevicePolicyManager binder call and a blocklist read to repaint text that is
+        // GONE. Skip it unless the Shield page is the visible tab; showTab(3) refreshes
+        // when it is opened, and the other callers (the guard switch, a role result, a
+        // block / unblock) all run with the page in front, so nothing is left stale.
+        if (vShield == null || current != 3) return;
         boolean roleHeld = false;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             RoleManager rm = getSystemService(RoleManager.class);
