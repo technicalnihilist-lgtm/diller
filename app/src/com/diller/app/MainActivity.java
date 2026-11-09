@@ -819,6 +819,12 @@ public class MainActivity extends Activity {
              *  stops allocating a Drawable per row. */
             int iconRes;
             ColorStateList nameColor;
+            /** Last text applied to each TextView. TextView.setText always requests a
+             *  new layout even when the string is identical, and a rebind here usually
+             *  repeats at least one field — the avatar letter, the "Missed" / "Incoming"
+             *  subtitle, or a relative time shared by several rows. Skipping those calls
+             *  keeps a recycled row from being re-measured and re-laid out during a fling. */
+            String boundName, boundSub, boundTime, boundInitial;
         }
 
         public View getView(int i, View cv, ViewGroup parent) {
@@ -852,15 +858,27 @@ public class MainActivity extends Activity {
                 h.dir.setImageResource(r.iconRes);
                 h.iconRes = r.iconRes;
             }
-            h.name.setText(r.title);
+            if (!r.title.equals(h.boundName)) {
+                h.name.setText(r.title);
+                h.boundName = r.title;
+            }
             final ColorStateList color = r.spam ? NAME_SPAM : NAME_NORMAL;
             if (h.nameColor != color) {
                 h.name.setTextColor(color);
                 h.nameColor = color;
             }
-            h.sub.setText(r.sub);
-            h.time.setText(r.time);
-            h.avatar.setText(r.initial);
+            if (!r.sub.equals(h.boundSub)) {
+                h.sub.setText(r.sub);
+                h.boundSub = r.sub;
+            }
+            if (!r.time.equals(h.boundTime)) {
+                h.time.setText(r.time);
+                h.boundTime = r.time;
+            }
+            if (!r.initial.equals(h.boundInitial)) {
+                h.avatar.setText(r.initial);
+                h.boundInitial = r.initial;
+            }
             return cv;
         }
     }
@@ -1102,6 +1120,9 @@ public class MainActivity extends Activity {
         class Holder {
             TextView name, number, avatar;
             ContactRow row;
+            /** Same guard as the recents holder: identical text skips the setText and
+             *  the row re-measure it would trigger on every rebind. */
+            String boundName, boundNumber, boundInitial;
         }
 
         public View getView(int i, View cv, ViewGroup parent) {
@@ -1129,9 +1150,18 @@ public class MainActivity extends Activity {
             }
             ContactRow r = items.get(i);
             h.row = r;
-            h.name.setText(r.name);
-            h.number.setText(r.number);
-            h.avatar.setText(r.initial);
+            if (!r.name.equals(h.boundName)) {
+                h.name.setText(r.name);
+                h.boundName = r.name;
+            }
+            if (!r.number.equals(h.boundNumber)) {
+                h.number.setText(r.number);
+                h.boundNumber = r.number;
+            }
+            if (!r.initial.equals(h.boundInitial)) {
+                h.avatar.setText(r.initial);
+                h.boundInitial = r.initial;
+            }
             return cv;
         }
     }
