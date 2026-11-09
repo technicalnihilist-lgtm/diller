@@ -76,6 +76,9 @@ public class MainActivity extends Activity {
 
     // keypad
     private TextView dialDisplay, dialSub, dialChip;
+    /** Category text currently on the keypad chip, so a keystroke that leaves the
+     *  verdict in the same category skips the upper-casing and the setText relayout. */
+    private String dialChipCat;
     private View btnBack, btnAdd;
     private View dialerBanner;
     private final StringBuilder typed = new StringBuilder();
@@ -451,9 +454,17 @@ public class MainActivity extends Activity {
 
         SpamEngine.Verdict v = engine.check(num);
         if (v.score >= 55) {
+            // Typing the rest of a number usually keeps the same category, so only
+            // re-upper-case and re-set the text when it really changed. toUpperCase()
+            // allocated a String per keystroke and setText re-measured the pill and
+            // relaid out the keypad row — ten times while dialling one number.
+            if (!v.category.equals(dialChipCat)) {
+                dialChipCat = v.category;
+                dialChip.setText(v.category.toUpperCase());
+            }
             dialChip.setVisibility(View.VISIBLE);
-            dialChip.setText(v.category.toUpperCase());
         } else {
+            dialChipCat = null;
             dialChip.setVisibility(View.GONE);
         }
     }
