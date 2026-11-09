@@ -1,6 +1,7 @@
 package com.diller.app;
 
 import android.content.Context;
+import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.ContactsContract;
@@ -19,6 +20,29 @@ public class Contacts {
             new ConcurrentHashMap<String, String>();
     private static final int CACHE_MAX = 256;
 
+    /** Set once per process, when the address-book observer is registered. */
+    private static volatile boolean observing;
+
+    /** The memo is dropped whenever the address book changes — a contact Diller itself
+     *  adds or deletes, a sync, or an edit in another contacts app. Without this, a number
+     *  looked up before the contact existed stayed cached as "no name" (so the keypad
+     *  subtitle and the in-call screen kept showing the bare number) and a renamed or
+     *  deleted contact kept its old name, until the process died. */
+    private static void observeAddressBook(Context c) {
+        if (observing) return;
+        observing = true;
+        try {
+            // A null Handler delivers onChange on the caller's binder thread, so this
+            // never queues work on the UI thread; CACHE is a ConcurrentHashMap.
+            c.getApplicationContext().getContentResolver().registerContentObserver(
+                    ContactsContract.Contacts.CONTENT_URI, true, new ContentObserver(null) {
+                        @Override public void onChange(boolean selfChange) { CACHE.clear(); }
+                    });
+        } catch (Exception e) {
+            observing = false;   // try again on the next lookup
+        }
+    }
+
     /** Canonical digits-only key, so "+91 98..." and "098..." share one entry. */
     private static String keyOf(String number) {
         return SpamEngine.normalize(number);
@@ -35,6 +59,7 @@ public class Contacts {
             return hit.isEmpty() ? null : hit;
         }
 
+        observeAddressBook(c);
         String name = query(c, number);
         if (CACHE.size() >= CACHE_MAX) CACHE.clear();
         CACHE.put(key, name == null ? "" : name);
