@@ -12,6 +12,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
+import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
@@ -117,6 +118,18 @@ public class MainActivity extends Activity {
      *  started from the same state and its result is what the new request would get. */
     private boolean callsLoading = false;
     private boolean callsLoadingMissed = false;
+    /** The call log only ever changes through a provider write, and the observer below
+     *  flags exactly those. With that flag, tapping back to the Recents tab can skip a
+     *  reload when the log has not moved: a 250-row query, 250 spam scorings, 250
+     *  relative-time formats and the 250-row "did anything change" diff, all thrown
+     *  away because the list on screen was already correct. Switching between the
+     *  keypad and the recents list is the most common thing a dialer does. */
+    private volatile boolean callsDirty = true;
+    private boolean callsObserverOn = false;
+    private ContentObserver callsObserver;
+    /** True once the log has been read, and the filter it was read with. */
+    private boolean callsLoaded = false;
+    private boolean callsLoadedMissed = false;
     private boolean contactsLoading = false;
     private String contactsLoadingFilter = "";
     /** Guards against a slow name lookup landing on a newer dialled number. */
@@ -146,6 +159,7 @@ public class MainActivity extends Activity {
         super.onCreate(b);
         setContentView(R.layout.activity_main);
         engine = new SpamEngine(this);
+        observeCallLog();
 
         content = findViewById(R.id.content);
         navCalls = findViewById(R.id.tab_calls);
@@ -662,7 +676,7 @@ public class MainActivity extends Activity {
             public void onClick(View v) {
                 missedOnly = !missedOnly;
                 toast(missedOnly ? "Showing missed calls" : "Showing all calls");
-                loadCalls();
+                loadCalls(true);
             }
         });
         // No loadCalls() here on purpose. The recents tab is hidden at launch (the
@@ -673,12 +687,42 @@ public class MainActivity extends Activity {
         // so it looks exactly the same when seen.
     }
 
+    /** Flags the recents list stale whenever the call log is written — a call that ends,
+     *  a delete, a sync. Registered on the application context and dropped in onDestroy,
+     *  so it never keeps this Activity (or its view tree) alive. If registration is
+     *  refused, callsObserverOn stays false and loadCalls() queries on every request
+     *  exactly as it did before. */
+    private void observeCallLog() {
+        if (callsObserverOn) return;
+        try {
+            ContentObserver o = new ContentObserver(null) {
+                @Override public void onChange(boolean selfChange) { callsDirty = true; }
+            };
+            getApplicationContext().getContentResolver().registerContentObserver(
+                    CallLog.Calls.CONTENT_URI, true, o);
+            callsObserver = o;
+            callsObserverOn = true;
+        } catch (Exception ignored) {
+            callsObserver = null;
+            callsObserverOn = false;
+        }
+    }
+
     /** Kicks off the call-log query on a background thread; the list is updated when it returns. */
-    private void loadCalls() {
+    private void loadCalls() { loadCalls(false); }
+
+    /** @param force reload even when the log looks unchanged — a delete Diller just made,
+     *               or a permission the user has only now granted. */
+    private void loadCalls(boolean force) {
         final boolean missed = missedOnly;
+        // Nothing in the log moved and the filter is the one already on screen: the rows
+        // in the adapter are still what this query would return.
+        if (!force && callsObserverOn && callsLoaded && !callsDirty
+                && missed == callsLoadedMissed) return;
         // A query for this exact filter is already in flight; its result is this
         // request's result too, so do not queue a duplicate provider scan behind it.
         if (callsLoading && callsLoadingMissed == missed) return;
+        callsDirty = false;   // any write from here on flags the list again
         callsLoading = true;
         callsLoadingMissed = missed;
         final int token = ++callsToken;
@@ -690,6 +734,8 @@ public class MainActivity extends Activity {
                         // Drop results for an older request, or a dead activity.
                         if (token != callsToken) return;
                         callsLoading = false;
+                        callsLoaded = true;
+                        callsLoadedMissed = missed;
                         if (isFinishing() || isDestroyed()) return;
                         recentsAdapter.set(rows);
                         recentsEmpty.setVisibility(rows.isEmpty() ? View.VISIBLE : View.GONE);
@@ -898,7 +944,7 @@ public class MainActivity extends Activity {
                 runOnUiThread(new Runnable() {
                     public void run() {
                         if (isFinishing() || isDestroyed()) return;
-                        if (deleted > 0) { toast("Call deleted"); loadCalls(); }
+                        if (deleted > 0) { toast("Call deleted"); loadCalls(true); }
                         else if (deleted == 0) toast("Couldn't delete call");
                         else toast("Couldn't delete — allow the Call log permission");
                     }
@@ -1392,7 +1438,7 @@ public class MainActivity extends Activity {
         // kicked off a full call-log scan and a full address-book walk for two hidden
         // pages — the same I/O the keypad's first paint was waiting on. showTab() loads
         // a list the first time that tab is opened, so nothing looks different.
-        if (current == 0) loadCalls();
+        if (current == 0) loadCalls(true);
         if (current == 1) loadContacts(search == null ? "" : search.getText().toString());
         updateDisplay();
     }
@@ -1412,6 +1458,14 @@ public class MainActivity extends Activity {
         contactsToken++;            // ignore any query still in flight
         callsToken++;
         summaryToken++;
+        if (callsObserver != null) {
+            try {
+                getApplicationContext().getContentResolver()
+                        .unregisterContentObserver(callsObserver);
+            } catch (Exception ignored) { }
+            callsObserver = null;
+            callsObserverOn = false;
+        }
         ioExecutor.shutdownNow();
         super.onDestroy();
     }
@@ -1421,7 +1475,9 @@ public class MainActivity extends Activity {
         super.onResume();
         refreshShield();   // also refreshes the default-dialer banner
         updateDisplay();
-        if (current == 0) loadCalls();
+        // Forced: a resume usually follows a call, and that must show up even on a ROM
+        // whose call-log provider does not notify observers.
+        if (current == 0) loadCalls(true);
         if (current == 1) loadContacts(search == null ? "" : search.getText().toString());
     }
 
