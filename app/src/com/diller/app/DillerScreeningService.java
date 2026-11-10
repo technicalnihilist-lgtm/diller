@@ -20,16 +20,32 @@ public class DillerScreeningService extends CallScreeningService {
      *  createNotificationChannel is an IPC into the notification manager. */
     private static volatile boolean channelReady = false;
 
+    /** Handed out when scoring throws, so the call is still answered through Telecom. */
+    private static final SpamEngine.Verdict UNSCORED =
+            new SpamEngine.Verdict(SpamEngine.CAT_UNKNOWN, 0, "Couldn't score this call", false);
+
     @Override
     public void onScreenCall(Call.Details details) {
         String number = null;
-        Uri handle = details.getHandle();
-        if (handle != null) number = handle.getSchemeSpecificPart();
-        if (number == null || number.isEmpty())
-            number = details.getCallerDisplayName();
+        SpamEngine.Verdict v;
+        // Everything up to the verdict is guarded: onScreenCall is a Telecom callback
+        // running in Diller's own process, so anything that escapes it crashes the
+        // dialer — and this one runs while a call is ringing. Scoring is also the only
+        // step here that touches disk (SpamEngine's first check reads the blocklist out
+        // of SharedPreferences, which on a cold process loads and parses the file), and
+        // a throw there used to take the whole process down instead of letting the call
+        // through. On any failure we answer Telecom normally and allow the call.
+        try {
+            Uri handle = details.getHandle();
+            if (handle != null) number = handle.getSchemeSpecificPart();
+            if (number == null || number.isEmpty())
+                number = details.getCallerDisplayName();
 
-        SpamEngine engine = new SpamEngine(this);
-        SpamEngine.Verdict v = engine.check(number);
+            SpamEngine engine = new SpamEngine(this);
+            v = engine.check(number);
+        } catch (Throwable t) {
+            v = UNSCORED;
+        }
 
         CallScreeningService.CallResponse.Builder b =
                 new CallScreeningService.CallResponse.Builder();
@@ -50,13 +66,18 @@ public class DillerScreeningService extends CallScreeningService {
         // it back, so moving it after respondToCall() changes no behaviour.
         respondToCall(details, b.build());
 
-        getSharedPreferences("diller", MODE_PRIVATE).edit()
-                .putString("last_number", number == null ? "" : number)
-                .putString("last_label", v.label)
-                .putString("last_category", v.category)
-                .putInt("last_score", v.score)
-                .putLong("last_time", System.currentTimeMillis())
-                .apply();
+        // Same reasoning as the guard above: this write is bookkeeping for the in-call
+        // screen, and it must never be able to throw out of a Telecom callback after the
+        // call has already been answered.
+        try {
+            getSharedPreferences("diller", MODE_PRIVATE).edit()
+                    .putString("last_number", number == null ? "" : number)
+                    .putString("last_label", v.label)
+                    .putString("last_category", v.category)
+                    .putInt("last_score", v.score)
+                    .putLong("last_time", System.currentTimeMillis())
+                    .apply();
+        } catch (Throwable ignored) { }
 
         if (!v.block && v.score >= 60) {
             warn(number, v);
