@@ -195,13 +195,29 @@ public class InCallActivity extends Activity {
             });
         }
 
-        SpamEngine.Verdict v = new SpamEngine(this).check(n);
-        if (v.score >= 55) {
-            spam.setVisibility(View.VISIBLE);
-            spam.setText("Possible scam — " + v.label + " (" + v.score + "/100)");
-        } else {
-            spam.setVisibility(View.GONE);
-        }
+        // Score the caller off the UI thread, like DillerInCallService already does on
+        // the ringing path. Constructing SpamEngine is a getSharedPreferences call and
+        // the first check() reads the blocklist out of prefs — on a process that Telecom
+        // started cold for this call, that loads and parses the prefs file on the thread
+        // that is about to paint this screen, so it sat between onCreate and the first
+        // frame. Hide the chip now (a rebind to a new number must not keep showing the
+        // previous caller's warning) and let the worker put it back when it has a verdict.
+        spam.setVisibility(View.GONE);
+        final int spamToken = token;
+        lookupExecutor().execute(new Runnable() {
+            public void run() {
+                final SpamEngine.Verdict v = new SpamEngine(InCallActivity.this).check(n);
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        if (spamToken != nameToken || isFinishing() || isDestroyed()) return;
+                        if (v.score >= 55) {
+                            spam.setText("Possible scam — " + v.label + " (" + v.score + "/100)");
+                            spam.setVisibility(View.VISIBLE);
+                        }
+                    }
+                });
+            }
+        });
     }
 
     @Override
