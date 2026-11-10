@@ -1466,7 +1466,14 @@ public class MainActivity extends Activity {
             callsObserver = null;
             callsObserverOn = false;
         }
-        ioExecutor.shutdownNow();
+        // Graceful, not shutdownNow(): the queue can still hold a provider *write* — the
+        // delete behind a left-swipe on a call or contact row — and it sits behind the
+        // query that happened to be running. shutdownNow() dropped that queued write and
+        // interrupted the one in flight, so swiping a row and then leaving the app (back,
+        // a rotation, the screen going away) could silently lose the delete. The tokens
+        // above are already bumped and every UI hop re-checks isFinishing()/isDestroyed(),
+        // so letting the queue drain cannot touch a dead view tree.
+        ioExecutor.shutdown();
         super.onDestroy();
     }
 
