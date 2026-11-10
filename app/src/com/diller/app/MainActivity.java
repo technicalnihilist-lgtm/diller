@@ -281,7 +281,9 @@ public class MainActivity extends Activity {
         }
         if (i == 0) loadCalls();
         if (i == 1) loadContacts(search == null ? "" : search.getText().toString());
-        if (i == 3) refreshShield();
+        // The keypad carries the default-dialer banner, so it refreshes the same
+        // values refreshShield() paints; the Shield page refreshes its own text.
+        if (i == 2 || i == 3) refreshShield();
         if (i == 4) refreshAi();
     }
 
@@ -1277,6 +1279,14 @@ public class MainActivity extends Activity {
     }
 
     private void refreshShield() {
+        // Only the keypad page (the default-dialer banner) and the Shield page show any
+        // of this. onResume() calls refreshShield() on every resume — after every call,
+        // every return from another app — so on the Recents, Contacts and AI tabs the
+        // RoleManager round trip below, and the shield block further down (a second
+        // binder call into the DevicePolicyManager plus a blocklist read), all ran to
+        // paint text that is on a hidden page. showTab() refreshes when the keypad or
+        // the Shield page is opened, so neither is ever left stale.
+        if (current != 2 && current != 3) return;
         // Resolve the dialer role once and share it with the banner and the status line;
         // this used to cost two binder calls per resume / tab switch.
         boolean dialer = isDefaultDialer();
