@@ -56,9 +56,11 @@ public class DillerInCallService extends InCallService {
         // 0) AI agent: answer unknown / suspected-spam calls on the user's behalf.
         //    The decision needs a PhoneLookup query (a content-provider round trip),
         //    so it runs on a worker thread instead of holding up the ringing UI.
-        if (ringing && getSharedPreferences("diller", MODE_PRIVATE).getBoolean("ai_agent", false)) {
-            decideAiAnswer(call, number);
-        }
+        //    The ai_agent flag itself is read there too: on a process the system
+        //    started for this call, that first getBoolean loads and parses the whole
+        //    prefs file (blocklist, AI history) on the thread that is about to start
+        //    the call screen, so it sat between the ring and the screen appearing.
+        if (ringing) decideIfAiAgent(call, number);
 
         // 1) Try to show the activity directly (works when Diller is the default dialer).
         try {
@@ -71,6 +73,22 @@ public class DillerInCallService extends InCallService {
         // 2) Fallback: a full-screen-intent notification, in case background
         //    activity starts are restricted on this ROM.
         showCallNotification(number, ringing);
+    }
+
+    /** Reads the ai_agent flag on the worker, so the ringing path does no disk I/O. */
+    private void decideIfAiAgent(final Call call, final String number) {
+        DECIDE.execute(new Runnable() {
+            public void run() {
+                boolean on;
+                try {
+                    on = getSharedPreferences("diller", MODE_PRIVATE)
+                            .getBoolean("ai_agent", false);
+                } catch (Exception e) {
+                    return;
+                }
+                if (on) decideAiAnswer(call, number);
+            }
+        });
     }
 
     /** Scores the caller off the main thread; only the answer itself hops back.
