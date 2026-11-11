@@ -503,8 +503,14 @@ public class MainActivity extends Activity {
         Uri uri = Uri.parse("tel:" + Uri.encode(number));
         boolean canCall = checkSelfPermission(Manifest.permission.CALL_PHONE)
                 == PackageManager.PERMISSION_GRANTED;
+        // Resolve the dialer role once and reuse it below. isDefaultDialer() is a
+        // synchronous binder round trip to the RoleManager, and this method asked it
+        // twice per dial — once to decide whether to show the glass call screen, and
+        // again for the "make Diller your Phone app" prompt on the fallback path.
+        // Both ran on the UI thread that is about to hand the call to Telecom.
+        final boolean defaultDialer = isDefaultDialer();
 
-        if (isDefaultDialer() && canCall) {
+        if (defaultDialer && canCall) {
             // Show Diller's own liquid-glass call screen immediately, then place the call.
             Intent ic = new Intent(this, InCallActivity.class);
             ic.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -523,7 +529,7 @@ public class MainActivity extends Activity {
             toast("No dialer available");
             return;
         }
-        if (!isDefaultDialer()) askDefaultDialer();
+        if (!defaultDialer) askDefaultDialer();
     }
 
     private void handleIntent(Intent intent) {
