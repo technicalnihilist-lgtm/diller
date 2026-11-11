@@ -175,51 +175,52 @@ public class InCallActivity extends Activity {
         number.setText(n.isEmpty() ? "No caller ID" : n);
         avatar.setText(initial(display));
 
-        // PhoneLookup goes out to the contacts provider (disk, possibly a sync adapter).
-        // Resolve the name on a worker thread so the in-call screen paints immediately
-        // instead of blocking onCreate on a provider round-trip.
+        // PhoneLookup goes out to the contacts provider (disk, possibly a sync adapter),
+        // and scoring the caller reads the blocklist out of prefs on a cold process.
+        // Both run on a worker so the in-call screen paints immediately instead of
+        // blocking onCreate on a provider round-trip.
         //
-        // The workers below run on a process-wide executor that outlives this screen,
-        // so they hold the application context rather than the Activity. A call declined
-        // or hung up within the first few hundred milliseconds used to keep this whole
+        // They are done as ONE task. As two, every call screen — and every onNewIntent
+        // rebind — queued two entries on this worker and posted two hops back to the UI
+        // thread, and the resolved name and the spam verdict could land in different
+        // frames. They read the same number and share no state, so one task and one post
+        // give the same screen with half the queueing and half the UI-thread wake-ups on
+        // the most latency-sensitive path in the app.
+        //
+        // The worker runs on a process-wide executor that outlives this screen, so it
+        // holds the application context rather than the Activity. A call declined or
+        // hung up within the first few hundred milliseconds used to keep this whole
         // Activity — its inflated view tree included — reachable for as long as the
         // PhoneLookup round trip took, because the Runnable captured InCallActivity.this
         // and only the UI hop that follows needs it.
         final Context app = getApplicationContext();
         final int token = ++nameToken;
-        if (!n.isEmpty()) {
-            lookupExecutor().execute(new Runnable() {
-                public void run() {
-                    final String contact = Contacts.nameFor(app, n);
-                    if (contact == null) return;
-                    runOnUiThread(new Runnable() {
-                        public void run() {
-                            if (token != nameToken || isFinishing() || isDestroyed()) return;
-                            name.setText(contact);
-                            avatar.setText(initial(contact));
-                        }
-                    });
-                }
-            });
-        }
-
-        // Score the caller off the UI thread, like DillerInCallService already does on
-        // the ringing path. Constructing SpamEngine is a getSharedPreferences call and
-        // the first check() reads the blocklist out of prefs — on a process that Telecom
-        // started cold for this call, that loads and parses the prefs file on the thread
-        // that is about to paint this screen, so it sat between onCreate and the first
-        // frame. Hide the chip now (a rebind to a new number must not keep showing the
-        // previous caller's warning) and let the worker put it back when it has a verdict.
+        // Hide the chip now (a rebind to a new number must not keep showing the previous
+        // caller's warning) and let the worker put it back when it has a verdict.
         spam.setVisibility(View.GONE);
-        final int spamToken = token;
+        // No caller ID: there is no name to resolve, and an empty number always scores
+        // below the chip threshold, so the round trip would only ever paint nothing.
+        if (n.isEmpty()) return;
         lookupExecutor().execute(new Runnable() {
             public void run() {
-                final SpamEngine.Verdict v = new SpamEngine(app).check(n);
+                String contact = null;
+                SpamEngine.Verdict v = null;
+                // Guarded separately: a throw in one lookup must not cost the other its
+                // result on a screen that is already up for this call.
+                try { contact = Contacts.nameFor(app, n); } catch (Exception ignored) { }
+                try { v = new SpamEngine(app).check(n); } catch (Throwable ignored) { }
+                final String found = contact;
+                final SpamEngine.Verdict verdict = v;
                 runOnUiThread(new Runnable() {
                     public void run() {
-                        if (spamToken != nameToken || isFinishing() || isDestroyed()) return;
-                        if (v.score >= 55) {
-                            spam.setText("Possible scam — " + v.label + " (" + v.score + "/100)");
+                        if (token != nameToken || isFinishing() || isDestroyed()) return;
+                        if (found != null) {
+                            name.setText(found);
+                            avatar.setText(initial(found));
+                        }
+                        if (verdict != null && verdict.score >= 55) {
+                            spam.setText("Possible scam — " + verdict.label
+                                    + " (" + verdict.score + "/100)");
                             spam.setVisibility(View.VISIBLE);
                         }
                     }
