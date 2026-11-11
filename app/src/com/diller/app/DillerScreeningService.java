@@ -58,26 +58,17 @@ public class DillerScreeningService extends CallScreeningService {
                     .setSkipCallLog(false).setSkipNotification(false);
         }
         // Reply to Telecom first: this is the time-critical step and the framework
-        // gives a screening service only a few seconds to answer. The verdict write
-        // below goes through SharedPreferences, which on a cold start loads and
-        // parses the prefs file from disk on the calling thread — so it used to sit
-        // between the caller ID arriving and the call being allowed through. The
-        // write is still fire-and-forget (.apply()) and nothing in this method reads
-        // it back, so moving it after respondToCall() changes no behaviour.
+        // gives a screening service only a few seconds to answer.
         respondToCall(details, b.build());
 
-        // Same reasoning as the guard above: this write is bookkeeping for the in-call
-        // screen, and it must never be able to throw out of a Telecom callback after the
-        // call has already been answered.
-        try {
-            getSharedPreferences("diller", MODE_PRIVATE).edit()
-                    .putString("last_number", number == null ? "" : number)
-                    .putString("last_label", v.label)
-                    .putString("last_category", v.category)
-                    .putInt("last_score", v.score)
-                    .putLong("last_time", System.currentTimeMillis())
-                    .apply();
-        } catch (Throwable ignored) { }
+        // The five "last_number" / "last_label" / "last_category" / "last_score" /
+        // "last_time" keys that used to be written here were never read by anything:
+        // the in-call screen gets the number from its Intent and re-scores it on its
+        // own worker. Nothing displayed them, yet every screened call still paid for a
+        // SharedPreferences commit, and a commit serialises the whole "diller" file —
+        // the blocklist plus up to 80 AI-history entries — to disk. That is a full
+        // prefs rewrite per incoming call, in the background, for data no one reads.
+        // Dropping it leaves every visible behaviour exactly as it was.
 
         if (!v.block && v.score >= 60) {
             warn(number, v);
