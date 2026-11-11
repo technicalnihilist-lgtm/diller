@@ -94,6 +94,19 @@ public class SpamEngine {
      *  blocklist(), which copied the whole set on every shield refresh / resume. */
     public int blocklistSize() { return snapshot().size(); }
 
+    /** Opens the prefs file now, on the calling thread, so a later check() does not
+     *  pay for it. The lazy open above lands on whoever asks first, and for the
+     *  keypad that is the UI thread: the first typed digit calls check() there, which
+     *  parsed the whole "diller" file (blocklist plus up to 80 AI-history entries)
+     *  mid-keystroke — the exact jank the lazy open was meant to avoid. MainActivity
+     *  calls this once on its I/O executor at startup, so the open happens off the
+     *  main thread. Safe to call repeatedly and from any thread (SharedPreferences
+     *  and the double-checked open are both thread-safe); failures are ignored and
+     *  the next real lookup simply retries the open. */
+    public void warm() {
+        try { snapshot(); } catch (Throwable ignored) { }
+    }
+
     private static void invalidate(Set<String> fresh) {
         blocklistCache = fresh;
         CACHE.clear();

@@ -196,6 +196,16 @@ public class MainActivity extends Activity {
             });
         }
         showTab(2);
+        // Open SpamEngine's prefs file here, on the I/O thread the lists already use,
+        // instead of letting the first keypad keystroke do it. That first check() runs
+        // on the UI thread (updateDisplay -> engine.check) and would otherwise parse the
+        // whole "diller" file — blocklist plus up to 80 AI-history entries — between the
+        // tap and the digit appearing. Same values, same screens; only the thread that
+        // pays for the open changes. If this does not finish first, check() opens it
+        // itself exactly as before.
+        ioExecutor.execute(new Runnable() {
+            public void run() { if (engine != null) engine.warm(); }
+        });
         handleIntent(getIntent());
         requestPerms();
     }
