@@ -178,11 +178,19 @@ public class InCallActivity extends Activity {
         // PhoneLookup goes out to the contacts provider (disk, possibly a sync adapter).
         // Resolve the name on a worker thread so the in-call screen paints immediately
         // instead of blocking onCreate on a provider round-trip.
+        //
+        // The workers below run on a process-wide executor that outlives this screen,
+        // so they hold the application context rather than the Activity. A call declined
+        // or hung up within the first few hundred milliseconds used to keep this whole
+        // Activity — its inflated view tree included — reachable for as long as the
+        // PhoneLookup round trip took, because the Runnable captured InCallActivity.this
+        // and only the UI hop that follows needs it.
+        final Context app = getApplicationContext();
         final int token = ++nameToken;
         if (!n.isEmpty()) {
             lookupExecutor().execute(new Runnable() {
                 public void run() {
-                    final String contact = Contacts.nameFor(InCallActivity.this, n);
+                    final String contact = Contacts.nameFor(app, n);
                     if (contact == null) return;
                     runOnUiThread(new Runnable() {
                         public void run() {
@@ -206,7 +214,7 @@ public class InCallActivity extends Activity {
         final int spamToken = token;
         lookupExecutor().execute(new Runnable() {
             public void run() {
-                final SpamEngine.Verdict v = new SpamEngine(InCallActivity.this).check(n);
+                final SpamEngine.Verdict v = new SpamEngine(app).check(n);
                 runOnUiThread(new Runnable() {
                     public void run() {
                         if (spamToken != nameToken || isFinishing() || isDestroyed()) return;
