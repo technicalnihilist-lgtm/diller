@@ -29,7 +29,30 @@ public class SpamEngine {
         }
     }
 
-    private final SharedPreferences prefs;
+    /** Opened on first use, not in the constructor. getSharedPreferences parses the
+     *  whole "diller" prefs file (blocklist, settings, up to 80 AI-history entries)
+     *  from disk on the calling thread the first time it runs, and MainActivity built
+     *  a SpamEngine in onCreate — on the keypad page, whose first frame needs none of
+     *  it (updateDisplay() returns early while the dial field is empty). Deferring the
+     *  open keeps that disk read off the cold-start main thread; whoever asks for a
+     *  verdict first pays it, on whichever thread that is (a worker for the recents
+     *  scan, the in-call screen or the screening service). SharedPreferences is
+     *  thread-safe, so the double-checked lazy open is enough. */
+    private final Context app;
+    private volatile SharedPreferences prefs;
+
+    private SharedPreferences prefs() {
+        SharedPreferences p = prefs;
+        if (p != null) return p;
+        synchronized (this) {
+            p = prefs;
+            if (p == null) {
+                p = app.getSharedPreferences("diller", Context.MODE_PRIVATE);
+                prefs = p;
+            }
+        }
+        return p;
+    }
 
     /** Verdicts are immutable, so one shared copy per number is safe and avoids
      *  re-scoring the same number on every list bind / dialer keystroke. */
@@ -39,14 +62,14 @@ public class SpamEngine {
     private static volatile Set<String> blocklistCache;
 
     public SpamEngine(Context c) {
-        prefs = c.getApplicationContext().getSharedPreferences("diller", Context.MODE_PRIVATE);
+        app = c.getApplicationContext();
     }
 
     /** Shared, read-only snapshot — avoids a SharedPreferences read + set copy per lookup. */
     private Set<String> snapshot() {
         Set<String> cached = blocklistCache;
         if (cached != null) return cached;
-        Set<String> s = prefs.getStringSet("blocklist", null);
+        Set<String> s = prefs().getStringSet("blocklist", null);
         Set<String> copy = s == null ? new HashSet<String>() : new HashSet<String>(s);
         blocklistCache = copy;
         return copy;
@@ -57,12 +80,12 @@ public class SpamEngine {
     }
     public void block(String n) {
         Set<String> s = new HashSet<String>(snapshot()); s.add(normalize(n));
-        prefs.edit().putStringSet("blocklist", s).apply();
+        prefs().edit().putStringSet("blocklist", s).apply();
         invalidate(s);
     }
     public void unblock(String n) {
         Set<String> s = new HashSet<String>(snapshot()); s.remove(normalize(n));
-        prefs.edit().putStringSet("blocklist", s).apply();
+        prefs().edit().putStringSet("blocklist", s).apply();
         invalidate(s);
     }
     public boolean isBlocked(String n) { return snapshot().contains(normalize(n)); }
