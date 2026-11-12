@@ -29,9 +29,15 @@ public class AiHistory {
             for (int i = 0; i < old.length() && i < MAX; i++) out.put(old.get(i));
             String raw = out.toString();
             p.edit().putString("ai_history", raw).apply();
-            // Prime the render cache so the next render() skips the parse entirely.
+            // Prime BOTH caches: the raw string so render() can skip the parse, and the
+            // rendered text itself, built here rather than on the UI thread. Callers now
+            // hand add() to a background thread and refresh the AI page when it returns,
+            // and that refresh renders the history: leaving cachedRender null meant the
+            // one parse this method had just done off the main thread was immediately
+            // repeated on the main thread by render(), so nothing was gained.
             cachedRaw = raw;
             cachedRender = null;
+            try { render(c); } catch (Exception ignored) { }
         } catch (Exception ignored) { }
     }
 

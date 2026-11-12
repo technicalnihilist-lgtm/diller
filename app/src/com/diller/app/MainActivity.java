@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 
 public class MainActivity extends Activity {
 
@@ -1543,8 +1544,7 @@ public class MainActivity extends Activity {
                 new AiClient(MainActivity.this).chat(q, new AiClient.Callback() {
                     public void onResult(String text) {
                         reply.setText(text);
-                        AiHistory.add(MainActivity.this, "chat", "Asked AI", q);
-                        refreshAi();
+                        addAiHistory("chat", "Asked AI", q, true);
                     }
                 });
             }
@@ -1574,7 +1574,7 @@ public class MainActivity extends Activity {
                 new AiClient(MainActivity.this).translate(t, codes[li[0]], new AiClient.Callback() {
                     public void onResult(String text) {
                         trOut.setText(text);
-                        AiHistory.add(MainActivity.this, "translate", "Translated to " + trLang.getText(), t);
+                        addAiHistory("translate", "Translated to " + trLang.getText(), t, false);
                     }
                 });
             }
@@ -1597,6 +1597,35 @@ public class MainActivity extends Activity {
         // parsing plus a third content-provider query on every cold start, for a page
         // the user often never opens. showTab(4) already calls refreshAi() the first
         // time the tab is actually shown, so the tab looks exactly the same when seen.
+    }
+
+    /** Records an AI event off the UI thread. AiHistory.add() parses the stored history
+     *  (up to 80 entries), rebuilds the JSON array, serialises it and writes prefs — and
+     *  the reply callbacks ran it on the UI thread the instant the answer was set, so a
+     *  full parse plus a prefs write landed inside the frame that was painting the
+     *  reply. The I/O thread does it instead; the AI page is refreshed after it, so the
+     *  new entry is on screen exactly as before, just one hop later. */
+    private void addAiHistory(final String type, final String title, final String body,
+                              final boolean thenRefresh) {
+        Runnable work = new Runnable() {
+            public void run() {
+                AiHistory.add(MainActivity.this, type, title, body);
+                if (!thenRefresh) return;
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        if (isFinishing() || isDestroyed()) return;
+                        refreshAi();
+                    }
+                });
+            }
+        };
+        try {
+            ioExecutor.execute(work);
+        } catch (RejectedExecutionException e) {
+            // The activity is already gone and its executor shut down; the entry is still
+            // worth recording (it is what the next launch shows), so do it inline.
+            try { AiHistory.add(this, type, title, body); } catch (Exception ignored) { }
+        }
     }
 
     private void refreshAi() {
