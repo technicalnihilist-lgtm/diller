@@ -87,6 +87,14 @@ public class MainActivity extends Activity {
     /** Category text currently on the keypad chip, so a keystroke that leaves the
      *  verdict in the same category skips the upper-casing and the setText relayout. */
     private String dialChipCat;
+    /** Text currently on the dial field and its subtitle. TextView.setText requests a new
+     *  layout even when the string it is handed is the same one already on screen, and
+     *  updateDisplay() runs far more often than the dialled number changes: on every
+     *  onResume (after every call, every return from another app), on every permission
+     *  result and after a contact save. The keypad is the page the app opens on, so those
+     *  no-op setText calls re-measured and re-laid out the dial row on the most-watched
+     *  screen for nothing. Same guard the list rows and the chip already use. */
+    private String boundDial, boundDialSub;
     private View btnBack, btnAdd;
     private View dialerBanner;
     private final StringBuilder typed = new StringBuilder();
@@ -432,10 +440,13 @@ public class MainActivity extends Activity {
 
     private void updateDisplay() {
         String num = typed.toString();
-        dialDisplay.setText(num);
+        if (!num.equals(boundDial)) {
+            boundDial = num;
+            dialDisplay.setText(num);
+        }
 
         if (num.isEmpty()) {
-            dialSub.setText("");
+            setSub("");
             dialChip.setVisibility(View.GONE);
             btnBack.setVisibility(View.INVISIBLE);
             btnAdd.setVisibility(View.INVISIBLE);
@@ -457,9 +468,9 @@ public class MainActivity extends Activity {
         // another provider round trip made the caller name flicker on every return
         // to the app; when the number is unchanged the cached text is still correct.
         if (lookup.equals(dialNameNum)) {
-            dialSub.setText(dialNameText);
+            setSub(dialNameText);
         } else {
-            dialSub.setText("");
+            setSub("");
             dialNameNum = null;
             dialNameText = "";
             dialPending = new Runnable() {
@@ -475,7 +486,7 @@ public class MainActivity extends Activity {
                                     final String shown = name != null ? name : "";
                                     dialNameNum = lookup;
                                     dialNameText = shown;
-                                    dialSub.setText(shown);
+                                    setSub(shown);
                                 }
                             });
                         }
@@ -500,6 +511,14 @@ public class MainActivity extends Activity {
             dialChipCat = null;
             dialChip.setVisibility(View.GONE);
         }
+    }
+
+    /** Sets the keypad subtitle only when it really changes, so an unchanged caller
+     *  name does not cost a text re-measure and a layout pass. */
+    private void setSub(String s) {
+        if (s.equals(boundDialSub)) return;
+        boundDialSub = s;
+        dialSub.setText(s);
     }
 
     private int dp(float v) {
