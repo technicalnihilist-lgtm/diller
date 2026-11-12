@@ -156,7 +156,12 @@ public class SpamEngine {
         if (n.isEmpty() || digits.isEmpty())
             return new Verdict(CAT_UNKNOWN, 35, "Private / no caller ID", false);
 
-        if (isBlocked(n))
+        // check() hands score() an already-normalized number, so test the shared
+        // snapshot directly. isBlocked() normalized the same string a second time —
+        // a full extra scan, plus a StringBuilder whenever the number carried spaces
+        // or brackets — on every score: once per call-log row (250 per recents load),
+        // per keypad keystroke and per screened call.
+        if (snapshot().contains(n))
             return new Verdict(CAT_BLOCKED, 100, "Blocked by you", true);
 
         // International prefixes heavily used for wangiri / callback scams
