@@ -1280,7 +1280,13 @@ public class MainActivity extends Activity {
                 refreshShield();
             }
         });
-        refreshShield();
+        // No refreshShield() here: setupShield() only ever runs from inflateTab(), which
+        // only ever runs from showTab(), and showTab() refreshes this page immediately
+        // after the page is built. The call that used to sit here made the first open of
+        // the Shield tab paint everything twice — two RoleManager binder calls, two
+        // DevicePolicyManager binder calls, a blocklist read and six setText relayouts,
+        // back to back, for the same text. Every other refresh path (the guard switch, a
+        // block / unblock, a role or admin result, onResume) is unchanged.
     }
 
     private android.content.SharedPreferences prefs() {
