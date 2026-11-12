@@ -141,6 +141,19 @@ public class MainActivity extends Activity {
     private boolean callsLoadedMissed = false;
     private boolean contactsLoading = false;
     private String contactsLoadingFilter = "";
+    /** Same dirty flag the recents list already uses. The contacts tab re-walked the
+     *  whole address book — a provider scan plus a CONTACT_ROWS-row rebuild — on every
+     *  switch to it and every resume, even when nothing in the address book had changed
+     *  (which is the common case: tapping between tabs is what a dialer is for). The
+     *  observer below flags the changes that matter, so an unchanged book reuses the
+     *  rows already in the adapter. If registration is refused, contactsObserverOn stays
+     *  false and loadContacts() queries on every request exactly as it did before. */
+    private volatile boolean contactsDirty = true;
+    private boolean contactsObserverOn = false;
+    private ContentObserver contactsObserver;
+    /** True once the address book has been read, and the filter it was read with. */
+    private boolean contactsLoaded = false;
+    private String contactsLoadedFilter = "";
     /** Guards against a slow name lookup landing on a newer dialled number. */
     private int dialNameToken = 0;
     /** Coalesces keypad name-lookups into one provider query once typing pauses. */
@@ -169,6 +182,7 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
         engine = new SpamEngine(this);
         observeCallLog();
+        observeContacts();
 
         content = findViewById(R.id.content);
         navCalls = findViewById(R.id.tab_calls);
@@ -651,7 +665,7 @@ public class MainActivity extends Activity {
                                         if (isFinishing() || isDestroyed()) return;
                                         if (ok) {
                                             toast("Contact saved");
-                                            if (current == 1) loadContacts(search == null ? "" : search.getText().toString());
+                                            if (current == 1) loadContacts(search == null ? "" : search.getText().toString(), true);
                                             updateDisplay();
                                         } else {
                                             toast("Couldn't save — allow the Contacts permission");
@@ -1020,7 +1034,7 @@ public class MainActivity extends Activity {
                         if (isFinishing() || isDestroyed()) return;
                         if (deleted > 0) {
                             toast("Contact deleted");
-                            loadContacts(search == null ? "" : search.getText().toString());
+                            loadContacts(search == null ? "" : search.getText().toString(), true);
                         } else if (deleted == 0) {
                             toast("Couldn't delete contact");
                         } else {
@@ -1070,11 +1084,38 @@ public class MainActivity extends Activity {
         // showTab(1) runs loadContacts() when the tab is first opened.
     }
 
-    /** Kicks off the query on a background thread; the list is updated when it returns. */
-    private void loadContacts(String filter) {
+    /** Flags the contacts list stale whenever the address book is written — Diller's own
+     *  add/delete, a sync, an edit in another contacts app. Registered on the application
+     *  context and dropped in onDestroy, so it never keeps this Activity alive. */
+    private void observeContacts() {
+        if (contactsObserverOn) return;
+        try {
+            ContentObserver o = new ContentObserver(null) {
+                @Override public void onChange(boolean selfChange) { contactsDirty = true; }
+            };
+            getApplicationContext().getContentResolver().registerContentObserver(
+                    ContactsContract.Contacts.CONTENT_URI, true, o);
+            contactsObserver = o;
+            contactsObserverOn = true;
+        } catch (Exception ignored) {
+            contactsObserver = null;
+            contactsObserverOn = false;
+        }
+    }
+
+    private void loadContacts(String filter) { loadContacts(filter, false); }
+
+    /** @param force reload even when the address book looks unchanged — a permission the
+     *               user has only now granted, or a contact Diller itself just wrote. */
+    private void loadContacts(String filter, boolean force) {
         final String f = filter == null ? "" : filter.toLowerCase().trim();
+        // Nothing changed and the filter is the one already on screen: the rows in the
+        // adapter are still what this query would return.
+        if (!force && contactsObserverOn && contactsLoaded && !contactsDirty
+                && f.equals(contactsLoadedFilter)) return;
         // Same coalescing as loadCalls(): one in-flight query per filter is enough.
         if (contactsLoading && f.equals(contactsLoadingFilter)) return;
+        contactsDirty = false;   // any write from here on flags the list again
         contactsLoading = true;
         contactsLoadingFilter = f;
         final int token = ++contactsToken;
@@ -1086,6 +1127,8 @@ public class MainActivity extends Activity {
                         // Drop results for an older search, or a dead activity.
                         if (token != contactsToken) return;
                         contactsLoading = false;
+                        contactsLoaded = true;
+                        contactsLoadedFilter = f;
                         if (isFinishing() || isDestroyed()) return;
                         contactsAdapter.set(rows);
                         contactsEmpty.setVisibility(rows.isEmpty() ? View.VISIBLE : View.GONE);
@@ -1491,7 +1534,7 @@ public class MainActivity extends Activity {
         // pages — the same I/O the keypad's first paint was waiting on. showTab() loads
         // a list the first time that tab is opened, so nothing looks different.
         if (current == 0) loadCalls(true);
-        if (current == 1) loadContacts(search == null ? "" : search.getText().toString());
+        if (current == 1) loadContacts(search == null ? "" : search.getText().toString(), true);
         updateDisplay();
     }
 
@@ -1517,6 +1560,14 @@ public class MainActivity extends Activity {
             } catch (Exception ignored) { }
             callsObserver = null;
             callsObserverOn = false;
+        }
+        if (contactsObserver != null) {
+            try {
+                getApplicationContext().getContentResolver()
+                        .unregisterContentObserver(contactsObserver);
+            } catch (Exception ignored) { }
+            contactsObserver = null;
+            contactsObserverOn = false;
         }
         // Graceful, not shutdownNow(): the queue can still hold a provider *write* — the
         // delete behind a left-swipe on a call or contact row — and it sits behind the
