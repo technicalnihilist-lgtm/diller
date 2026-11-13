@@ -23,16 +23,23 @@ public class AdminReceiver extends DeviceAdminReceiver {
         int count = p.getInt("fail_count", 0);
         if (first == 0L || now - first > WINDOW_MS) { first = now; count = 0; }
         count++;
-        p.edit().putLong("fail_first", first).putInt("fail_count", count).apply();
+        // commit(), not apply(): this is a BroadcastReceiver, and once onReceive returns
+        // the system may reclaim the process immediately — the device-admin callback runs
+        // in a process the system started just for it. apply() only queues the disk write,
+        // so the attempt count could be dropped before it reached the file, and the alarm
+        // below then never reached its threshold (the whole point of the guard). The write
+        // is a few milliseconds on a thread whose only job is this callback.
+        p.edit().putLong("fail_first", first).putInt("fail_count", count).commit();
         if (count >= MAX_FAILS) {
             TheftGuardService.triggerAlarm(c, "Multiple failed unlock attempts");
         }
     }
 
-    @Override
-    public void onPasswordSucceeded(Context c, Intent i) {
+    @Override public void onPasswordSucceeded(Context c, Intent i) {
+        // Same reason as onPasswordFailed: a queued reset that never reached disk leaves
+        // a stale count behind, so the next few failures trip the alarm early.
         c.getSharedPreferences("diller", Context.MODE_PRIVATE)
-                .edit().putInt("fail_count", 0).putLong("fail_first", 0L).apply();
+                .edit().putInt("fail_count", 0).putLong("fail_first", 0L).commit();
     }
 
     private void toast(Context c, String m) {
