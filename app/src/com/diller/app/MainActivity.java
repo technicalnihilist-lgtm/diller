@@ -1796,9 +1796,16 @@ public class MainActivity extends Activity {
         if (summaryLoading) return;   // a build for this same log is already running
         summaryLoading = true;
         final int token = ++summaryToken;
+        // The build is a full call-log scan running on the process-wide I/O executor,
+        // which onDestroy() drains rather than cancels. Capturing this Activity there
+        // kept it — and every tab view tree it had inflated — reachable for as long as
+        // the scan took after the user left the app. DailySummary only needs a Context,
+        // so the worker holds the application context, exactly as the AI-history write
+        // and the in-call lookup worker already do.
+        final Context app = getApplicationContext();
         ioExecutor.execute(new Runnable() {
             public void run() {
-                final String text = DailySummary.build(MainActivity.this);
+                final String text = DailySummary.build(app);
                 runOnUiThread(new Runnable() {
                     public void run() {
                         summaryLoading = false;
