@@ -8,6 +8,7 @@ import android.app.role.RoleManager;
 import android.content.ComponentName;
 import android.content.ContentProviderOperation;
 import android.content.ContentUris;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -1747,9 +1748,16 @@ public class MainActivity extends Activity {
      *  new entry is on screen exactly as before, just one hop later. */
     private void addAiHistory(final String type, final String title, final String body,
                               final boolean thenRefresh) {
+        // The write needs a Context, not this Activity, so it holds the application
+        // context. onDestroy() drains the I/O queue gracefully (a queued call or contact
+        // delete must not be dropped), so a history write still waiting behind a
+        // provider query used to keep this Activity — and every tab view tree it owns —
+        // reachable until the queue got to it. Same treatment bindNumber() already gives
+        // the in-call screen's worker.
+        final Context app = getApplicationContext();
         Runnable work = new Runnable() {
             public void run() {
-                AiHistory.add(MainActivity.this, type, title, body);
+                AiHistory.add(app, type, title, body);
                 if (!thenRefresh) return;
                 runOnUiThread(new Runnable() {
                     public void run() {
@@ -1764,7 +1772,7 @@ public class MainActivity extends Activity {
         } catch (RejectedExecutionException e) {
             // The activity is already gone and its executor shut down; the entry is still
             // worth recording (it is what the next launch shows), so do it inline.
-            try { AiHistory.add(this, type, title, body); } catch (Exception ignored) { }
+            try { AiHistory.add(app, type, title, body); } catch (Exception ignored) { }
         }
     }
 
