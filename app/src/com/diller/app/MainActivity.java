@@ -23,6 +23,7 @@ import android.provider.CallLog;
 import android.provider.ContactsContract;
 import android.telecom.TelecomManager;
 import android.text.Editable;
+import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.text.format.DateUtils;
 import android.util.TypedValue;
@@ -1454,39 +1455,50 @@ public class MainActivity extends Activity {
             RoleManager rm = getSystemService(RoleManager.class);
             if (rm != null) roleHeld = rm.isRoleHeld(RoleManager.ROLE_CALL_SCREENING);
         }
-        if (screenStatus != null) {
-            screenStatus.setText(roleHeld
-                    ? "Status: active — screening every incoming call"
-                    : "Status: not enabled");
-            screenStatus.setTextColor(roleHeld ? 0xFF34C759 : 0xFFFFC24B);
-        }
-        if (shieldPill != null) {
-            shieldPill.setText(roleHeld ? "Shield ON" : "Shield OFF");
-            shieldPill.setTextColor(roleHeld ? BLUE : 0xFFFFC24B);
-        }
+        setTextIfChanged(screenStatus, roleHeld
+                ? "Status: active — screening every incoming call"
+                : "Status: not enabled");
+        setColorIfChanged(screenStatus, roleHeld ? 0xFF34C759 : 0xFFFFC24B);
 
-        if (dialerStatus != null) {
-            dialerStatus.setText(dialer
-                    ? "Default phone app: Diller — glass call screen on"
-                    : "Default phone app: not set");
-            dialerStatus.setTextColor(dialer ? 0xFF34C759 : 0xFFFFC24B);
-        }
+        setTextIfChanged(shieldPill, roleHeld ? "Shield ON" : "Shield OFF");
+        setColorIfChanged(shieldPill, roleHeld ? BLUE : 0xFFFFC24B);
+
+        setTextIfChanged(dialerStatus, dialer
+                ? "Default phone app: Diller — glass call screen on"
+                : "Default phone app: not set");
+        setColorIfChanged(dialerStatus, dialer ? 0xFF34C759 : 0xFFFFC24B);
 
         // Count without copying: refreshShield runs on every resume and tab switch,
         // and blocklist() handed back a fresh copy of the whole set each time.
         int blocked = engine.blocklistSize();
-        if (blockCount != null)
-            blockCount.setText(blocked + " number" + (blocked == 1 ? "" : "s") + " blocked");
+        setTextIfChanged(blockCount,
+                blocked + " number" + (blocked == 1 ? "" : "s") + " blocked");
 
         ComponentName cn = new ComponentName(this, AdminReceiver.class);
         DevicePolicyManager dpm = getSystemService(DevicePolicyManager.class);
         boolean admin = dpm != null && dpm.isAdminActive(cn);
-        if (guardStatus != null) {
-            guardStatus.setText(admin
-                    ? "Device admin: enabled — lock & alarm ready"
-                    : "Device admin: not enabled");
-            guardStatus.setTextColor(admin ? 0xFF34C759 : 0xFFFFC24B);
-        }
+        setTextIfChanged(guardStatus, admin
+                ? "Device admin: enabled — lock & alarm ready"
+                : "Device admin: not enabled");
+        setColorIfChanged(guardStatus, admin ? 0xFF34C759 : 0xFFFFC24B);
+    }
+
+    /** setText() re-runs the whole text layout and requests a layout pass even when the
+     *  string is identical, and refreshShield() repaints these five labels on every
+     *  resume (i.e. after every call and every return from another app), on every tab
+     *  switch to the keypad or the Shield page and after every role/admin result — while
+     *  the values behind them almost never change. Comparing first turns a resume on a
+     *  settled page into no relayout work at all. TextUtils.equals compares the chars of
+     *  the CharSequence the TextView already holds, so the check itself allocates
+     *  nothing. */
+    private static void setTextIfChanged(TextView tv, String s) {
+        if (tv != null && !TextUtils.equals(tv.getText(), s)) tv.setText(s);
+    }
+
+    /** Same for the colour: setTextColor() re-resolves the ColorStateList and invalidates
+     *  the view, which is pure redraw work when the colour is already the one on screen. */
+    private static void setColorIfChanged(TextView tv, int color) {
+        if (tv != null && tv.getCurrentTextColor() != color) tv.setTextColor(color);
     }
 
     private void showBlocklist() {
