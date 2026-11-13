@@ -808,6 +808,34 @@ public class MainActivity extends Activity {
         });
     }
 
+    /** Projection and base order hoisted out of the query: a fresh String[5] and a
+     *  concatenated sort string were built on every call-log reload — every resume,
+     *  every switch back to the Recents tab, every filter toggle. */
+    private static final String[] CALL_COLS = {
+            CallLog.Calls._ID, CallLog.Calls.CACHED_NAME,
+            CallLog.Calls.NUMBER, CallLog.Calls.TYPE, CallLog.Calls.DATE};
+    private static final String CALL_ORDER = CallLog.Calls.DATE + " DESC";
+
+    /** The call-log cursor, with the 250-row cap pushed down into the provider. A
+     *  provider that refuses the LIMIT suffix in the sort order throws out of query(),
+     *  and the catch below then returned an empty list — so the Recents tab showed
+     *  "no calls" for a call log that was perfectly readable, on every load. Same
+     *  fallback the contacts cursor already uses: retry once with the plain order. The
+     *  row loop below caps the result at 250 either way. */
+    private Cursor openCallsCursor(String sel, String[] selArgs) {
+        try {
+            return getContentResolver().query(CallLog.Calls.CONTENT_URI, CALL_COLS,
+                    sel, selArgs, CALL_ORDER + " LIMIT 250");
+        } catch (Exception e) {
+            try {
+                return getContentResolver().query(CallLog.Calls.CONTENT_URI, CALL_COLS,
+                        sel, selArgs, CALL_ORDER);
+            } catch (Exception ignored) {
+                return null;
+            }
+        }
+    }
+
     private List<CallRow> queryCalls(boolean missedOnly) {
         List<CallRow> rows = new ArrayList<>();
         if (checkSelfPermission(Manifest.permission.READ_CALL_LOG)
@@ -822,10 +850,7 @@ public class MainActivity extends Activity {
                 String sel = missedOnly ? CallLog.Calls.TYPE + "=?" : null;
                 String[] selArgs = missedOnly
                         ? new String[]{String.valueOf(CallLog.Calls.MISSED_TYPE)} : null;
-                cur = getContentResolver().query(CallLog.Calls.CONTENT_URI,
-                        new String[]{CallLog.Calls._ID, CallLog.Calls.CACHED_NAME,
-                                CallLog.Calls.NUMBER, CallLog.Calls.TYPE, CallLog.Calls.DATE},
-                        sel, selArgs, CallLog.Calls.DATE + " DESC LIMIT 250");
+                cur = openCallsCursor(sel, selArgs);
                 if (cur != null) {
                     while (cur.moveToNext() && rows.size() < 250) {
                         long callId = cur.getLong(0);
