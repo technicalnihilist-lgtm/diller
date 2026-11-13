@@ -237,7 +237,27 @@ public class MainActivity extends Activity {
             public void run() { if (engine != null) engine.warm(); }
         });
         handleIntent(getIntent());
-        requestPerms();
+        // The permission request used to run inline here, inside onCreate. requestPerms()
+        // makes six checkSelfPermission calls — each one a synchronous binder round trip
+        // into the package manager — and then inflates the system permission dialog, so
+        // the keypad's first measure/layout/draw could not start until all of it had
+        // finished, on the very path the app is judged on at launch. Waiting for the
+        // first pre-draw pass instead means the window is already laid out when the
+        // dialog opens: same six checks, same dialog, same screen, one frame later.
+        final View firstFrame = content;
+        if (firstFrame == null) {
+            requestPerms();
+        } else {
+            firstFrame.getViewTreeObserver().addOnPreDrawListener(
+                    new android.view.ViewTreeObserver.OnPreDrawListener() {
+                        public boolean onPreDraw() {
+                            android.view.ViewTreeObserver vto = firstFrame.getViewTreeObserver();
+                            if (vto.isAlive()) vto.removeOnPreDrawListener(this);
+                            if (!isFinishing() && !isDestroyed()) requestPerms();
+                            return true;
+                        }
+                    });
+        }
     }
 
     // ---------------- tabs ----------------
