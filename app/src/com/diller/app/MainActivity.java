@@ -181,8 +181,15 @@ public class MainActivity extends Activity {
         super.onCreate(b);
         setContentView(R.layout.activity_main);
         engine = new SpamEngine(this);
-        observeCallLog();
-        observeContacts();
+        // The call-log and address-book observers are registered by setupCalls() /
+        // setupContacts() instead, i.e. the first time their tab is opened. Both are
+        // registerContentObserver binder round trips into the provider process (the
+        // contacts one with notifyForDescendants, which makes the provider build a
+        // notification URI tree) and they used to run here, on the cold-start main
+        // thread before the keypad's first frame, for two lists that are hidden at
+        // launch. The recents and contacts pages are built lazily anyway, so the
+        // observer now appears with the page it serves and before that page's first
+        // query, which keeps the dirty-flag skipping exactly as it was.
 
         content = findViewById(R.id.content);
         navCalls = findViewById(R.id.tab_calls);
@@ -712,6 +719,10 @@ public class MainActivity extends Activity {
     // ---------------- calls ----------------
 
     private void setupCalls() {
+        // Registered here rather than in onCreate(): see the note there. showTab(0) runs
+        // this before its loadCalls(), so the first query already has the observer that
+        // lets later switches skip an unchanged log.
+        observeCallLog();
         recentsList = vCalls.findViewById(R.id.recents_list);
         recentsEmpty = vCalls.findViewById(R.id.recents_empty);
         recentsAdapter = new RecentsAdapter();
@@ -1049,6 +1060,8 @@ public class MainActivity extends Activity {
     // ---------------- contacts ----------------
 
     private void setupContacts() {
+        // Same as setupCalls(): registered with the page, not at cold start.
+        observeContacts();
         contactsList = vContacts.findViewById(R.id.contacts_list);
         contactsEmpty = vContacts.findViewById(R.id.contacts_empty);
         search = vContacts.findViewById(R.id.contact_search);
