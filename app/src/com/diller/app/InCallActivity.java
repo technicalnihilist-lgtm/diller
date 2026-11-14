@@ -272,7 +272,21 @@ public class InCallActivity extends Activity {
             utility.setVisibility(View.GONE);
             return;
         }
-        int state = c.getState();
+        // getState() is guarded like every other touch of the Call on this screen
+        // (endCall(), the answer path, and DillerInCallService.onCallAdded already
+        // wrap theirs). refresh() is called from the state callback, from onCreate and
+        // from onNewIntent, and Telecom's Call can already be gone by the time one of
+        // those runs — the caller hung up between the state change being dispatched and
+        // this screen handling it. An uncaught throw here took the in-call screen down
+        // mid-call. On failure the screen is simply left as it is: the hangup button
+        // still works, and DillerInCallService.onCallRemoved() -> finishIfOpen() closes
+        // it when the call really ends.
+        int state;
+        try {
+            state = c.getState();
+        } catch (Exception e) {
+            return;
+        }
         switch (state) {
             case Call.STATE_RINGING:
                 status.setText("Incoming call");
