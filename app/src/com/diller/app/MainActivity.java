@@ -493,6 +493,17 @@ public class MainActivity extends Activity {
             dialChip.setVisibility(View.GONE);
             btnBack.setVisibility(View.INVISIBLE);
             btnAdd.setVisibility(View.INVISIBLE);
+            // A caller-name lookup queued by the last digit is still sitting on the 180ms
+            // debounce (or on the I/O queue) when the field is cleared, and this early
+            // return used to leave it running: the worker's token still matched, so it
+            // did a PhoneLookup for a number that is no longer on screen and wrote that
+            // name into the subtitle of the empty field — which is exactly what a fast
+            // backspace (or the long-press clear) produces. Bumping the token and
+            // dropping the pending callback keeps the field blank and skips the provider
+            // round trip. dialNameNum/dialNameText are deliberately left alone: retyping
+            // the same number still reuses the name already resolved for it.
+            dialNameToken++;
+            if (dialPending != null) { searchHandler.removeCallbacks(dialPending); dialPending = null; }
             return;
         }
         btnBack.setVisibility(View.VISIBLE);
