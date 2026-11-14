@@ -47,11 +47,28 @@ public class DillerInCallService extends InCallService {
         instance = this;
         current = call;
 
+        // Reading the call is guarded: Telecom hands this callback a Call that can already
+        // be gone (the caller hung up between Telecom deciding to tell us and this method
+        // running), and getDetails() / getState() then throw. onCallAdded runs in Diller's
+        // own process on the ringing path, so an escape here used to take the dialer down
+        // with the phone still ringing — no call screen, no fallback notification, and the
+        // AI agent never got its chance to answer. On any failure the screen and the
+        // notification below still come up, just with an unknown caller, which is exactly
+        // what a call with no handle produces anyway.
         String number = "";
-        if (call.getDetails() != null && call.getDetails().getHandle() != null)
-            number = call.getDetails().getHandle().getSchemeSpecificPart();
+        try {
+            // One getDetails() for the null check and the handle, instead of three calls
+            // to the same accessor per incoming call.
+            Call.Details details = call.getDetails();
+            if (details != null && details.getHandle() != null)
+                number = details.getHandle().getSchemeSpecificPart();
+        } catch (Exception ignored) { }
+        if (number == null) number = "";
 
-        boolean ringing = call.getState() == Call.STATE_RINGING;
+        boolean ringing = false;
+        try {
+            ringing = call.getState() == Call.STATE_RINGING;
+        } catch (Exception ignored) { }
 
         // 0) AI agent: answer unknown / suspected-spam calls on the user's behalf.
         //    The decision needs a PhoneLookup query (a content-provider round trip),
