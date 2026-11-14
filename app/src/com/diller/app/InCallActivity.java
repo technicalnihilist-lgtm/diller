@@ -210,13 +210,18 @@ public class InCallActivity extends Activity {
                 try { contact = Contacts.nameFor(app, n); } catch (Exception ignored) { }
                 try { v = new SpamEngine(app).check(n); } catch (Throwable ignored) { }
                 final String found = contact;
+                // The avatar letter is derived from the name that was just resolved, so it
+                // is built here on the worker rather than in the UI-thread hop below — the
+                // hop only has to hand two ready Strings to setText on the frame that is
+                // already painting the call screen.
+                final String foundInitial = contact == null ? null : initial(contact);
                 final SpamEngine.Verdict verdict = v;
                 runOnUiThread(new Runnable() {
                     public void run() {
                         if (token != nameToken || isFinishing() || isDestroyed()) return;
                         if (found != null) {
                             name.setText(found);
-                            avatar.setText(initial(found));
+                            avatar.setText(foundInitial);
                         }
                         if (verdict != null && verdict.score >= 55) {
                             spam.setText("Possible scam — " + verdict.label
@@ -373,9 +378,17 @@ public class InCallActivity extends Activity {
         }
     };
 
+    /** Avatar letter for the call screen. substring(0, 1).toUpperCase() built a copied
+     *  String and then a second upper-cased one; this keeps the single-char String the
+     *  TextView needs and nothing else. Same treatment MainActivity.initialOf() got, and
+     *  this one runs on the call screen — the most latency-sensitive path in the app. */
     private static String initial(String s) {
         if (s == null || s.isEmpty()) return "?";
-        return s.substring(0, 1).toUpperCase();
+        char c = s.charAt(0);
+        // Already upper case (or not a letter): Character.toUpperCase() would hand the
+        // same char straight back, so the case map is only paid for when it can change.
+        if (c < 'a' || c > 'z') return String.valueOf(c);
+        return String.valueOf(Character.toUpperCase(c));
     }
 
     @Override
