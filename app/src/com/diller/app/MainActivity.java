@@ -178,6 +178,13 @@ public class MainActivity extends Activity {
     private TextView screenStatus, shieldPill, blockCount, guardStatus, dialerStatus;
     private Switch guardSwitch;
 
+    // ai
+    /** Found once with the page, like the shield labels. refreshAi() runs on every
+     *  switch to the AI tab, on every agent toggle, after every settings save and after
+     *  every recorded AI event, and it re-walked this page's view tree three times per
+     *  refresh to find the same three TextViews. */
+    private TextView aiAgentStatus, aiHistoryView, aiSummary;
+
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -1514,6 +1521,15 @@ public class MainActivity extends Activity {
         if (tv != null && !TextUtils.equals(tv.getText(), s)) tv.setText(s);
     }
 
+    /** True when a CharSequence holds nothing but whitespace, without allocating a
+     *  String: the trim().isEmpty() check it replaces copied the text to answer it. */
+    private static boolean isBlank(CharSequence s) {
+        for (int i = 0; i < s.length(); i++) {
+            if (!Character.isWhitespace(s.charAt(i))) return false;
+        }
+        return true;
+    }
+
     /** Same for the colour: setTextColor() re-resolves the ColorStateList and invalidates
      *  the view, which is pure redraw work when the colour is already the one on screen. */
     private static void setColorIfChanged(TextView tv, int color) {
@@ -1684,7 +1700,10 @@ public class MainActivity extends Activity {
     // ---------------- AI ----------------
 
     private void setupAi() {
-        final TextView summary = vAi.findViewById(R.id.ai_summary);
+        aiAgentStatus = vAi.findViewById(R.id.agent_status);
+        aiHistoryView = vAi.findViewById(R.id.ai_history);
+        aiSummary = vAi.findViewById(R.id.ai_summary);
+        final TextView summary = aiSummary;
         vAi.findViewById(R.id.btn_summary_refresh).setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) { loadAiSummary(summary); }
         });
@@ -1806,14 +1825,17 @@ public class MainActivity extends Activity {
         // rebind that changed nothing still re-measured and re-laid out a tall TextView
         // mid-tab-switch. setTextIfChanged compares against the CharSequence the TextView
         // already holds and allocates nothing, and it null-guards the lookups too.
-        setTextIfChanged(vAi.findViewById(R.id.agent_status),
+        setTextIfChanged(aiAgentStatus,
                 on ? "AI agent ON - will answer unknown / suspected-spam calls."
                    : "AI agent off.");
-        setTextIfChanged(vAi.findViewById(R.id.ai_history), AiHistory.render(this));
-        TextView sum = vAi.findViewById(R.id.ai_summary);
+        setTextIfChanged(aiHistoryView, AiHistory.render(this));
+        TextView sum = aiSummary;
         if (sum == null) return;
-        String cur = sum.getText().toString();
-        if (cur.equals("Tap refresh") || cur.trim().isEmpty()) loadAiSummary(sum);
+        // Compare against the CharSequence the TextView already holds. The old
+        // getText().toString() plus trim() built two throwaway Strings per refresh on
+        // the tab-switch path, purely to ask "is this still the placeholder?".
+        if (TextUtils.equals(sum.getText(), "Tap refresh") || isBlank(sum.getText()))
+            loadAiSummary(sum);
     }
 
     /** Builds the daily summary on the I/O thread. The call-log query used to run on the
