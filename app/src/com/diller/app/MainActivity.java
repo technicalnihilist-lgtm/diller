@@ -1790,12 +1790,21 @@ public class MainActivity extends Activity {
     private void refreshAi() {
         if (vAi == null) return;
         boolean on = prefs().getBoolean("ai_agent", false);
-        TextView st = vAi.findViewById(R.id.agent_status);
-        st.setText(on ? "AI agent ON - will answer unknown / suspected-spam calls."
-                      : "AI agent off.");
-        TextView hist = vAi.findViewById(R.id.ai_history);
-        hist.setText(AiHistory.render(this));
+        // Repaint only what changed, the same way refreshShield() already does. This page
+        // is refreshed on every switch to the AI tab, on every agent toggle, after every
+        // settings save and after every recorded AI event — and the values behind these
+        // two labels almost never change between two of those. setText() re-runs the whole
+        // text layout and requests a layout pass even for an identical string, and the
+        // history block is long (up to 20 entries, each with a wrapped body line), so a
+        // rebind that changed nothing still re-measured and re-laid out a tall TextView
+        // mid-tab-switch. setTextIfChanged compares against the CharSequence the TextView
+        // already holds and allocates nothing, and it null-guards the lookups too.
+        setTextIfChanged(vAi.findViewById(R.id.agent_status),
+                on ? "AI agent ON - will answer unknown / suspected-spam calls."
+                   : "AI agent off.");
+        setTextIfChanged(vAi.findViewById(R.id.ai_history), AiHistory.render(this));
         TextView sum = vAi.findViewById(R.id.ai_summary);
+        if (sum == null) return;
         String cur = sum.getText().toString();
         if (cur.equals("Tap refresh") || cur.trim().isEmpty()) loadAiSummary(sum);
     }
