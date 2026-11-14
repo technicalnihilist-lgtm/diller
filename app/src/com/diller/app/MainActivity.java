@@ -1265,13 +1265,20 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** Projection hoisted out of contactsQuery(): a fresh String[3] was built for every
+     *  address-book query — the first open of the Contacts tab, every debounced search
+     *  keystroke, and a second one on a provider that rejects the LIMIT suffix and takes
+     *  the fallback path. Exactly the treatment CALL_COLS already gets on the recents
+     *  side; the projection never varies, so one shared array serves them all. */
+    private static final String[] CONTACT_COLS = {
+            ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+            ContactsContract.CommonDataKinds.Phone.NUMBER};
+
     private Cursor contactsQuery(String sortOrder) {
         return getContentResolver().query(
                 ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                new String[]{ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
-                        ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-                        ContactsContract.CommonDataKinds.Phone.NUMBER},
-                null, null, sortOrder);
+                CONTACT_COLS, null, null, sortOrder);
     }
 
     /** Case-insensitive "contains" with no allocation: regionMatches compares in place,
