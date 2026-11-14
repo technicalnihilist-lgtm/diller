@@ -1828,7 +1828,7 @@ public class MainActivity extends Activity {
         setTextIfChanged(aiAgentStatus,
                 on ? "AI agent ON - will answer unknown / suspected-spam calls."
                    : "AI agent off.");
-        setTextIfChanged(aiHistoryView, AiHistory.render(this));
+        refreshAiHistory();
         TextView sum = aiSummary;
         if (sum == null) return;
         // Compare against the CharSequence the TextView already holds. The old
@@ -1836,6 +1836,37 @@ public class MainActivity extends Activity {
         // the tab-switch path, purely to ask "is this still the placeholder?".
         if (TextUtils.equals(sum.getText(), "Tap refresh") || isBlank(sum.getText()))
             loadAiSummary(sum);
+    }
+
+    /** Paints the AI history without parsing it on the UI thread. refreshAi() runs from
+     *  the tab switch itself, and a cold AiHistory cache made it read prefs, parse up to
+     *  80 stored JSON entries and format 20 dates inside the 190ms page animation the
+     *  first time the AI tab was opened in a process. AiHistory primes its cache every
+     *  time it records an event, so the warm branch below is the usual one; the cold one
+     *  goes to the I/O thread and the text is set when it comes back. Same text, same
+     *  page — the history simply appears one hop later on that first open. */
+    private void refreshAiHistory() {
+        final TextView tv = aiHistoryView;
+        if (tv == null) return;
+        String cached = AiHistory.cached(this);
+        if (cached != null) { setTextIfChanged(tv, cached); return; }
+        final Context app = getApplicationContext();
+        try {
+            ioExecutor.execute(new Runnable() {
+                public void run() {
+                    final String text = AiHistory.render(app);
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            if (isFinishing() || isDestroyed()) return;
+                            setTextIfChanged(tv, text);
+                        }
+                    });
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            // Executor already shut down (activity gone): render inline as before.
+            try { setTextIfChanged(tv, AiHistory.render(app)); } catch (Exception ignored) { }
+        }
     }
 
     /** Builds the daily summary on the I/O thread. The call-log query used to run on the

@@ -48,6 +48,24 @@ public class AiHistory {
     private static volatile String cachedRaw;
     private static volatile String cachedRender;
 
+    /** The rendered history when it is already cached for the stored JSON, else null.
+     *  render() re-reads the "ai_history" string and, on a cold cache, parses the whole
+     *  array (up to 80 entries) and formats 20 dates. Callers that run on the UI thread —
+     *  the AI tab's refresh, which fires from the tab switch itself — can ask this first
+     *  and hand the cold case to a worker instead of parsing inside the page animation. */
+    public static String cached(Context c) {
+        String hit = cachedRender;
+        if (hit == null) return null;
+        try {
+            String raw = c.getApplicationContext()
+                    .getSharedPreferences("diller", Context.MODE_PRIVATE)
+                    .getString("ai_history", "[]");
+            return raw.equals(cachedRaw) ? hit : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public static String render(Context c) {
         SharedPreferences p = c.getApplicationContext().getSharedPreferences("diller", Context.MODE_PRIVATE);
         String raw = p.getString("ai_history", "[]");
