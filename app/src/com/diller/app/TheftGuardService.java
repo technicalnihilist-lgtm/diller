@@ -62,10 +62,16 @@ public class TheftGuardService extends Service {
     /** Loud alarm + alert. Safe to call from any context (device admin, boot, UI). */
     public static void triggerAlarm(Context ctx, String reason) {
         try {
-            ctx.getSharedPreferences("diller", Context.MODE_PRIVATE)
-                    .edit().putBoolean("alarm_active", true)
-                    .putString("alarm_reason", reason).apply();
-
+            // The "alarm_active" / "alarm_reason" pair written here was never read by
+            // anything: no screen, no service, no receiver in this app touches either
+            // key, so the alarm state it recorded was invisible. Every trigger still
+            // paid for a SharedPreferences apply(), and an apply() serialises the whole
+            // "diller" file — the blocklist plus up to 80 AI-history entries — to disk
+            // on a background thread. This is the one path that fires repeatedly (every
+            // failed unlock past the threshold, a SIM flap re-triggering it), so each of
+            // those was a full prefs rewrite for data nothing displays. Dropping the
+            // write leaves the alarm, the notification and every screen exactly as they
+            // were, minus the disk churn on the most urgent path in the app.
             AudioManager am = (AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);
             if (am != null) {
                 int max = am.getStreamMaxVolume(AudioManager.STREAM_ALARM);
