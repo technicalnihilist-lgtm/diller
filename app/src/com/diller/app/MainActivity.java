@@ -967,12 +967,21 @@ public class MainActivity extends Activity {
     }
 
     class RecentsAdapter extends BaseAdapter {
-        final List<CallRow> items = new ArrayList<>();
+        /** The rows handed over by the last load. Assigned, not copied. */
+        List<CallRow> items = new ArrayList<>();
         /** Switching back to this tab re-queries the log; when the rows are unchanged
          *  skip notifyDataSetChanged so no visible row is rebound for nothing. */
         void set(List<CallRow> r) {
             if (same(r)) return;
-            items.clear(); items.addAll(r); notifyDataSetChanged();
+            // Adopt the list the query already built instead of copying it in.
+            // clear() + addAll() walked all 250 rows a second time and grew this list
+            // through about nine array reallocations (10 -> 15 -> 22 -> ... -> 366
+            // slots), copying some 700 references, on every reload — and the Recents
+            // tab reloads on every resume, every tab switch and every filter toggle.
+            // queryCalls() hands over a list it never touches again, and same() above
+            // has already compared the two when they differ, so the copy bought nothing.
+            items = r;
+            notifyDataSetChanged();
         }
         private boolean same(List<CallRow> r) {
             int n = r.size();
@@ -1315,11 +1324,17 @@ public class MainActivity extends Activity {
     }
 
     class ContactsAdapter extends BaseAdapter {
-        final List<ContactRow> items = new ArrayList<>();
+        /** The rows handed over by the last load. Assigned, not copied. */
+        List<ContactRow> items = new ArrayList<>();
         /** Same as the recents adapter: no rebind when the result set did not change. */
         void set(List<ContactRow> r) {
             if (same(r)) return;
-            items.clear(); items.addAll(r); notifyDataSetChanged();
+            // Same as RecentsAdapter.set(): adopt the list queryContacts() built rather
+            // than clear() + addAll() into this one, which re-walked up to 500 rows and
+            // grew the backing array through a dozen reallocations on every load — the
+            // first open of the Contacts tab, every debounced search and every resume.
+            items = r;
+            notifyDataSetChanged();
         }
         private boolean same(List<ContactRow> r) {
             int n = r.size();
