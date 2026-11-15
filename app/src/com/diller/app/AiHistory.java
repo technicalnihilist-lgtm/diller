@@ -35,9 +35,15 @@ public class AiHistory {
             // and that refresh renders the history: leaving cachedRender null meant the
             // one parse this method had just done off the main thread was immediately
             // repeated on the main thread by render(), so nothing was gained.
+            //
+            // render() was reached through prefs, so it read the string it had just
+            // written back out and parsed the WHOLE array again — up to 80 entries — to
+            // format the same 20 lines, a second full JSON parse per recorded AI event
+            // (every AI-answered call included). Render straight from the array built
+            // above instead; same text, one parse.
+            String rendered = renderArray(out);
             cachedRaw = raw;
-            cachedRender = null;
-            try { render(c); } catch (Exception ignored) { }
+            cachedRender = rendered;
         } catch (Exception ignored) { }
     }
 
@@ -72,28 +78,30 @@ public class AiHistory {
         String hit = cachedRender;
         if (hit != null && raw.equals(cachedRaw)) return hit;
         try {
-            JSONArray arr = new JSONArray(raw);
-            if (arr.length() == 0) {
-                cachedRaw = raw;
-                cachedRender = "No AI activity yet.";
-                return cachedRender;
-            }
-            SimpleDateFormat f = new SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault());
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < arr.length() && i < 20; i++) {
-                JSONObject e = arr.getJSONObject(i);
-                sb.append("• ").append(f.format(new Date(e.optLong("t"))))
-                  .append(" — ").append(e.optString("title"));
-                String b = e.optString("body", "");
-                if (!b.isEmpty()) sb.append("\n    ").append(b);
-                sb.append("\n");
-            }
-            String text = sb.toString();
+            String text = renderArray(new JSONArray(raw));
             cachedRaw = raw;
             cachedRender = text;
             return text;
         } catch (Exception e) {
             return "No AI activity yet.";
         }
+    }
+
+    /** Renders the first 20 entries of an already-parsed array. Shared by render() (which
+     *  parses the stored string) and add() (which already holds the array it just built),
+     *  so recording an event no longer parses the history a second time. */
+    private static String renderArray(JSONArray arr) throws Exception {
+        if (arr.length() == 0) return "No AI activity yet.";
+        SimpleDateFormat f = new SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault());
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < arr.length() && i < 20; i++) {
+            JSONObject e = arr.getJSONObject(i);
+            sb.append("\u2022 ").append(f.format(new Date(e.optLong("t"))))
+              .append(" \u2014 ").append(e.optString("title"));
+            String b = e.optString("body", "");
+            if (!b.isEmpty()) sb.append("\n    ").append(b);
+            sb.append("\n");
+        }
+        return sb.toString();
     }
 }
