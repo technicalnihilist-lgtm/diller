@@ -145,7 +145,15 @@ public class SpamEngine {
         Verdict hit = CACHE.get(n);
         if (hit != null) return hit;
         Verdict v = score(n);
-        if (CACHE.size() >= CACHE_MAX) CACHE.clear();
+        // Same treatment Contacts.nameFor() got: at the cap, drop one entry rather than
+        // the whole map. CACHE.clear() here threw away every verdict already computed,
+        // and the recents list alone asks for up to 250 of them per load — so the first
+        // load after a clear re-scored the entire visible log, plus every number the
+        // keypad and the screening service had already asked about.
+        if (CACHE.size() >= CACHE_MAX) {
+            java.util.Iterator<String> it = CACHE.keySet().iterator();
+            if (it.hasNext()) { it.next(); it.remove(); }
+        }
         CACHE.put(n, v);
         return v;
     }

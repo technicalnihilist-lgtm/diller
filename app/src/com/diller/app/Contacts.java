@@ -61,7 +61,17 @@ public class Contacts {
 
         observeAddressBook(c);
         String name = query(c, number);
-        if (CACHE.size() >= CACHE_MAX) CACHE.clear();
+        // Evict ONE entry at the cap instead of clearing the whole memo. What this map
+        // saves is a PhoneLookup content-provider round trip (disk, often a sync
+        // adapter), and nameFor() runs on the incoming-call path before the call screen
+        // paints. Clearing at the cap dropped up to CACHE_MAX already-resolved callers
+        // in one go, so the next call from any of them paid that round trip again — the
+        // memo behaved as if it had never been filled, exactly when the user was being
+        // called most. Dropping a single entry keeps every other name warm.
+        if (CACHE.size() >= CACHE_MAX) {
+            java.util.Iterator<String> it = CACHE.keySet().iterator();
+            if (it.hasNext()) { it.next(); it.remove(); }
+        }
         CACHE.put(key, name == null ? "" : name);
         return name;
     }
