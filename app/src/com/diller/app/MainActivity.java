@@ -522,6 +522,12 @@ public class MainActivity extends Activity {
         // provider round trip per keystroke on the shared I/O thread, where they also
         // queued ahead of a pending call-log or contacts query.
         final String lookup = num;
+        // The lookup runs on the process-wide ioExecutor, which outlives this screen.
+        // Capturing MainActivity.this there kept the whole Activity — its inflated
+        // keypad, tabs and list adapters included — reachable until the PhoneLookup
+        // round trip returned, even if the user had already left the app. Only the UI
+        // hop below needs the Activity; the provider query needs a Context.
+        final Context lookupCtx = getApplicationContext();
         final int nameToken = ++dialNameToken;
         if (dialPending != null) { searchHandler.removeCallbacks(dialPending); dialPending = null; }
         // updateDisplay() also runs from onResume(), where the dialled number is
@@ -540,7 +546,7 @@ public class MainActivity extends Activity {
                     ioExecutor.execute(new Runnable() {
                         public void run() {
                             if (nameToken != dialNameToken) return;   // superseded while queued
-                            final String name = Contacts.nameFor(MainActivity.this, lookup);
+                            final String name = Contacts.nameFor(lookupCtx, lookup);
                             runOnUiThread(new Runnable() {
                                 public void run() {
                                     if (nameToken != dialNameToken || isFinishing() || isDestroyed()) return;
