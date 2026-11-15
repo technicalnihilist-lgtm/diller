@@ -1,9 +1,12 @@
 package com.diller.app;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.Context;
 import android.media.AudioManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.telecom.Call;
@@ -146,7 +149,55 @@ public class InCallActivity extends Activity {
         });
 
         attachCallback();
+        registerScreenReceiver();
         refresh();
+    }
+
+    /** The 1-second ticker only rewrites the duration label, so it is pure wake-up work
+     *  while the display is off — and during a voice call the proximity sensor blanks the
+     *  display for most of the call. The ticker used to keep waking the UI thread (and
+     *  re-measuring the label) once a second for the whole of nearly every call, screen
+     *  dark. Stopping it on ACTION_SCREEN_OFF and restarting it on ACTION_SCREEN_ON
+     *  costs nothing visible: the duration is derived from callStart, so the label is
+     *  correct the instant the display comes back. */
+    private BroadcastReceiver screenReceiver;
+    /** Display state, so a call that connects or returns to the front while the screen
+     *  is dark does not restart the ticker the receiver just stopped. */
+    private boolean screenOn = true;
+
+    private void registerScreenReceiver() {
+        if (screenReceiver != null) return;
+        // One binder call when the screen is created, so a call screen built while the
+        // display is already dark starts in the right state (no SCREEN_OFF will follow).
+        try {
+            android.os.PowerManager pm =
+                    (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (pm != null) screenOn = pm.isInteractive();
+        } catch (Exception ignored) { }
+        BroadcastReceiver r = new BroadcastReceiver() {
+            @Override public void onReceive(Context c, Intent i) {
+                String action = i == null ? null : i.getAction();
+                if (Intent.ACTION_SCREEN_OFF.equals(action)) {
+                    screenOn = false;
+                    handler.removeCallbacks(tick);
+                } else if (Intent.ACTION_SCREEN_ON.equals(action)) {
+                    screenOn = true;
+                    if (!timerOn || !screenVisible) return;
+                    handler.removeCallbacks(tick);
+                    handler.post(tick);
+                }
+            }
+        };
+        IntentFilter f = new IntentFilter();
+        f.addAction(Intent.ACTION_SCREEN_OFF);
+        f.addAction(Intent.ACTION_SCREEN_ON);
+        try {
+            // A refused registration must not crash the call screen; the ticker then
+            // simply behaves exactly as it did before.
+            if (Build.VERSION.SDK_INT >= 33) registerReceiver(r, f, Context.RECEIVER_NOT_EXPORTED);
+            else registerReceiver(r, f);
+            screenReceiver = r;
+        } catch (Exception ignored) { }
     }
 
     /** Keeps the state callback attached to the call currently on screen. Called from
@@ -339,7 +390,7 @@ public class InCallActivity extends Activity {
         if (timerOn) return;
         if (callStart == 0L) callStart = System.currentTimeMillis();
         timerOn = true;
-        if (screenVisible) handler.post(tick);
+        if (screenVisible && screenOn) handler.post(tick);
     }
 
     private void stopTimer() {
@@ -359,7 +410,7 @@ public class InCallActivity extends Activity {
     protected void onStart() {
         super.onStart();
         screenVisible = true;
-        if (timerOn) {
+        if (timerOn && screenOn) {
             handler.removeCallbacks(tick);
             handler.post(tick);
         }
@@ -409,6 +460,10 @@ public class InCallActivity extends Activity {
     protected void onDestroy() {
         if (open == this) open = null;
         handler.removeCallbacks(tick);
+        if (screenReceiver != null) {
+            try { unregisterReceiver(screenReceiver); } catch (Exception ignored) { }
+            screenReceiver = null;
+        }
         // Detach from the telecom Call. The Call object outlives this Activity
         // (it lives in DillerInCallService until the call ends), so a registered
         // callback would keep the whole view tree of this screen alive.
