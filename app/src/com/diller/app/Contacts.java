@@ -76,13 +76,20 @@ public class Contacts {
         return name;
     }
 
+    /** The PhoneLookup projection never varies, so one shared array serves every lookup.
+     *  A fresh String[1] used to be built per call — the same treatment CALL_COLS and
+     *  CONTACT_COLS already got on the two list queries. query() runs on the incoming-call
+     *  path (before the call screen paints and before the AI agent decides), on every
+     *  keypad name debounce and on every in-call screen bind, i.e. exactly on the paths
+     *  where an avoidable allocation is least welcome. */
+    private static final String[] LOOKUP_COLS = {ContactsContract.PhoneLookup.DISPLAY_NAME};
+
     private static String query(Context c, String number) {
         Cursor cur = null;
         try {
             Uri uri = Uri.withAppendedPath(
                     ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number));
-            cur = c.getContentResolver().query(uri,
-                    new String[]{ContactsContract.PhoneLookup.DISPLAY_NAME}, null, null, null);
+            cur = c.getContentResolver().query(uri, LOOKUP_COLS, null, null, null);
             if (cur != null && cur.moveToFirst()) return cur.getString(0);
         } catch (Exception ignored) {
         } finally {
