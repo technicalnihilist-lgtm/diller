@@ -778,7 +778,8 @@ public class MainActivity extends Activity {
         recentsList.setAdapter(recentsAdapter);
         recentsList.setOnItemClickListener(new android.widget.AdapterView.OnItemClickListener() {
             public void onItemClick(android.widget.AdapterView<?> p, View v, int pos, long id) {
-                placeCall(recentsAdapter.items.get(pos).number);
+                CallRow r = rowAt(recentsAdapter.items, pos);
+                if (r != null) placeCall(r.number);
             }
         });
         vCalls.findViewById(R.id.btn_edit).setOnClickListener(new View.OnClickListener() {
@@ -860,6 +861,19 @@ public class MainActivity extends Activity {
                 });
             }
         });
+    }
+
+    /** The row at a tapped position, or null when a reload replaced the adapter's list
+     *  between the touch and the click. ListView resolves a click position from the child
+     *  view it laid out, so a load landing in between — the recents tab reloads on every
+     *  resume, the contacts tab on every debounced search keystroke — handed the listener
+     *  a position that no longer exists in the adopted list, and the direct
+     *  items.get(pos) threw IndexOutOfBoundsException on the UI thread, taking the dialer
+     *  down mid-tap. Null simply means "no call to place": the tap does nothing, which is
+     *  what it would have done on a row that had just been removed. */
+    private static <T> T rowAt(List<T> items, int pos) {
+        if (items == null || pos < 0 || pos >= items.size()) return null;
+        return items.get(pos);
     }
 
     /** Projection and base order hoisted out of the query: a fresh String[5] and a
@@ -1216,7 +1230,8 @@ public class MainActivity extends Activity {
         contactsList.setAdapter(contactsAdapter);
         contactsList.setOnItemClickListener(new android.widget.AdapterView.OnItemClickListener() {
             public void onItemClick(android.widget.AdapterView<?> p, View v, int pos, long id) {
-                placeCall(contactsAdapter.items.get(pos).number);
+                ContactRow r = rowAt(contactsAdapter.items, pos);
+                if (r != null) placeCall(r.number);
             }
         });
         View addBtn = vContacts.findViewById(R.id.btn_new_contact);
