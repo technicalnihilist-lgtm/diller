@@ -38,8 +38,20 @@ public class AdminReceiver extends DeviceAdminReceiver {
     @Override public void onPasswordSucceeded(Context c, Intent i) {
         // Same reason as onPasswordFailed: a queued reset that never reached disk leaves
         // a stale count behind, so the next few failures trip the alarm early.
-        c.getSharedPreferences("diller", Context.MODE_PRIVATE)
-                .edit().putInt("fail_count", 0).putLong("fail_first", 0L).commit();
+        //
+        // But only write when there is actually something to reset. onPasswordSucceeded
+        // fires on every successful unlock of the phone, and commit() re-serialises the
+        // WHOLE "diller" prefs file to disk — the blocklist plus up to 80 stored AI-history
+        // entries — on the main thread of this receiver. The counters are already zero on
+        // every unlock except the one that follows a failed attempt, so the other hundreds
+        // of unlocks a day paid a full file write and an fsync to store the zeros that were
+        // already there. The check below costs an in-memory read (the same file the write
+        // would have had to load anyway), and the reset still happens the moment a failed
+        // attempt leaves a count behind.
+        android.content.SharedPreferences p =
+                c.getSharedPreferences("diller", Context.MODE_PRIVATE);
+        if (p.getInt("fail_count", 0) == 0 && p.getLong("fail_first", 0L) == 0L) return;
+        p.edit().putInt("fail_count", 0).putLong("fail_first", 0L).commit();
     }
 
     private void toast(Context c, String m) {
