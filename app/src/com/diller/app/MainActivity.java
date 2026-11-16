@@ -253,6 +253,9 @@ public class MainActivity extends Activity {
         // finished, on the very path the app is judged on at launch. Waiting for the
         // first pre-draw pass instead means the window is already laid out when the
         // dialog opens: same six checks, same dialog, same screen, one frame later.
+        // requestPerms() now runs those checks on the I/O thread and only posts the
+        // request back, so the traversal that triggers it pays neither the binder calls
+        // nor the dialog inflation.
         final View firstFrame = content;
         if (firstFrame == null) {
             requestPerms();
@@ -1636,18 +1639,53 @@ public class MainActivity extends Activity {
 
     // ---------------- permissions ----------------
 
-    private void requestPerms() {
+    /** The permissions still missing, resolved without touching any UI so the six
+     *  checkSelfPermission binder round trips can run off the main thread. Null when
+     *  nothing is missing. */
+    private static String[] missingPerms(Context c) {
         List<String> need = new ArrayList<>();
         String[] all = {Manifest.permission.CALL_PHONE, Manifest.permission.READ_CALL_LOG,
                 Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS,
                 Manifest.permission.READ_PHONE_STATE};
         for (String p : all)
-            if (checkSelfPermission(p) != PackageManager.PERMISSION_GRANTED) need.add(p);
+            if (c.checkSelfPermission(p) != PackageManager.PERMISSION_GRANTED) need.add(p);
         if (Build.VERSION.SDK_INT >= 33
-                && checkSelfPermission("android.permission.POST_NOTIFICATIONS")
+                && c.checkSelfPermission("android.permission.POST_NOTIFICATIONS")
                 != PackageManager.PERMISSION_GRANTED)
             need.add("android.permission.POST_NOTIFICATIONS");
-        if (!need.isEmpty()) requestPermissions(need.toArray(new String[0]), REQ_PERMS);
+        return need.isEmpty() ? null : need.toArray(new String[0]);
+    }
+
+    /** Checks the permissions on the I/O thread and asks for the missing ones on the UI
+     *  thread. The six checks are synchronous binder round trips into the package
+     *  manager, and this runs from the first pre-draw pass (see onCreate) — i.e. right
+     *  between the keypad's first measure and its first draw. Doing them here keeps that
+     *  stretch of the cold-start main thread to the traversal itself, and asking from a
+     *  posted callback rather than from inside onPreDraw means the system permission
+     *  dialog's window is not inflated during a draw traversal. Same checks, same
+     *  dialog, same screen, one hop later. */
+    private void requestPerms() {
+        final Context app = getApplicationContext();
+        try {
+            ioExecutor.execute(new Runnable() {
+                public void run() {
+                    final String[] need = missingPerms(app);
+                    if (need == null) return;
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            if (isFinishing() || isDestroyed()) return;
+                            try { requestPermissions(need, REQ_PERMS); } catch (Exception ignored) { }
+                        }
+                    });
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            // Activity already gone and its executor shut down: fall back to inline.
+            String[] need = missingPerms(this);
+            if (need != null) {
+                try { requestPermissions(need, REQ_PERMS); } catch (Exception ignored) { }
+            }
+        }
     }
 
     @Override
