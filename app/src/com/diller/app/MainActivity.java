@@ -838,9 +838,14 @@ public class MainActivity extends Activity {
         callsLoading = true;
         callsLoadingMissed = missed;
         final int token = ++callsToken;
+        // The rows the adapter already holds, read here on the UI thread and handed to
+        // the query as a plain snapshot, so an unchanged row can be reused instead of
+        // rebuilt (see queryCalls). The worker only reads this list; set() replaces the
+        // adapter's reference rather than mutating it, so the snapshot stays consistent.
+        final List<CallRow> prevRows = recentsAdapter == null ? null : recentsAdapter.items;
         ioExecutor.execute(new Runnable() {
             public void run() {
-                final List<CallRow> rows = queryCalls(missed);
+                final List<CallRow> rows = queryCalls(missed, prevRows);
                 runOnUiThread(new Runnable() {
                     public void run() {
                         // Drop results for an older request, or a dead activity.
@@ -885,7 +890,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private List<CallRow> queryCalls(boolean missedOnly) {
+    private List<CallRow> queryCalls(boolean missedOnly, List<CallRow> prev) {
         List<CallRow> rows = new ArrayList<>();
         if (checkSelfPermission(Manifest.permission.READ_CALL_LOG)
                 == PackageManager.PERMISSION_GRANTED) {
@@ -901,6 +906,7 @@ public class MainActivity extends Activity {
                         ? new String[]{String.valueOf(CallLog.Calls.MISSED_TYPE)} : null;
                 cur = openCallsCursor(sel, selArgs);
                 if (cur != null) {
+                    int i = 0;
                     while (cur.moveToNext() && rows.size() < 250) {
                         long callId = cur.getLong(0);
                         String name = cur.getString(1);
@@ -908,19 +914,47 @@ public class MainActivity extends Activity {
                         int type = cur.getInt(3);
                         long date = cur.getLong(4);
 
-                        CallRow r = new CallRow();
-                        r.id = callId;
-                        r.number = num == null ? "" : num;
+                        // Every field below is derived from this one cursor row, so a
+                        // row that comes back identical can reuse the object the adapter
+                        // already holds instead of building a new one. onResume() forces
+                        // a reload on the Recents tab (a ROM whose call-log provider does
+                        // not notify observers has to be covered), so this runs on every
+                        // return to the app after a call, and the log has almost always
+                        // not moved: 250 CallRow objects, 250 single-char avatar strings
+                        // from initialOf() and the "Scam · " concat were allocated and
+                        // immediately thrown away by the same() diff. Everything the row
+                        // shows is compared before reuse — including the freshly
+                        // formatted time and the current spam verdict, so a minute
+                        // boundary, a block/unblock or a renamed contact still produces a
+                        // new row and the list repaints exactly as it did before.
+                        String number = num == null ? "" : num;
                         boolean hasName = name != null && !name.isEmpty();
-                        r.title = hasName ? name : (r.number.isEmpty() ? "Unknown" : r.number);
-                        r.sub = hasName && !r.number.isEmpty() ? r.number : typeLabel(type);
-                        r.iconRes = typeIcon(type);
-                        r.time = DateUtils.getRelativeTimeSpanString(date).toString();
-                        r.initial = initialOf(r.title);
-                        SpamEngine.Verdict v = engine.check(r.number);
-                        r.spam = v.score >= 60;
-                        if (r.spam) r.sub = "Scam · " + r.sub;
+                        String title = hasName ? name : (number.isEmpty() ? "Unknown" : number);
+                        String time = DateUtils.getRelativeTimeSpanString(date).toString();
+                        boolean spam = engine.check(number).score >= 60;
+
+                        CallRow r = null;
+                        if (prev != null && i < prev.size()) {
+                            CallRow p = prev.get(i);
+                            if (p.id == callId && p.date == date && p.spam == spam
+                                    && p.number.equals(number) && p.title.equals(title)
+                                    && p.time.equals(time)) r = p;
+                        }
+                        if (r == null) {
+                            r = new CallRow();
+                            r.id = callId;
+                            r.date = date;
+                            r.number = number;
+                            r.title = title;
+                            r.sub = hasName && !number.isEmpty() ? number : typeLabel(type);
+                            r.iconRes = typeIcon(type);
+                            r.time = time;
+                            r.initial = initialOf(title);
+                            r.spam = spam;
+                            if (spam) r.sub = "Scam · " + r.sub;
+                        }
                         rows.add(r);
+                        i++;
                     }
                 }
             } catch (Exception ignored) {
@@ -962,6 +996,8 @@ public class MainActivity extends Activity {
 
     class CallRow {
         String title, sub, time, number;
+        /** Call-log DATE, so a reload can tell an unchanged row from a changed one. */
+        long date;
         /** Avatar letter, computed once per row instead of on every list bind. */
         String initial;
         long id;
