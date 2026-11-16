@@ -870,6 +870,34 @@ public class MainActivity extends Activity {
             CallLog.Calls.NUMBER, CallLog.Calls.TYPE, CallLog.Calls.DATE};
     private static final String CALL_ORDER = CallLog.Calls.DATE + " DESC";
 
+    /** Relative-time labels, memoised by call-log DATE for the current wall-clock minute.
+     *  DateUtils.getRelativeTimeSpanString allocates a SpannableStringBuilder and runs
+     *  calendar arithmetic for every row, and queryCalls() formats all 250 rows on every
+     *  reload — every resume (onResume forces one, because the log usually has NOT moved),
+     *  every switch back to the Recents tab and every filter toggle. Its default
+     *  resolution is a minute, so a label computed for a given DATE is still exactly
+     *  right for the rest of that minute; the memo is dropped the moment the minute
+     *  changes, so the labels still age precisely as they did before. Bounded, and on the
+     *  usual reload the strings it hands back are the same objects the reused CallRows
+     *  already hold, so it retains nothing new. */
+    private static final android.util.LruCache<Long, String> TIME_CACHE =
+            new android.util.LruCache<>(512);
+    private static long timeCacheMinute = -1L;
+
+    private static synchronized String relativeTime(long date) {
+        long minute = System.currentTimeMillis() / 60000L;
+        if (minute != timeCacheMinute) {
+            TIME_CACHE.evictAll();
+            timeCacheMinute = minute;
+        }
+        Long key = date;
+        String hit = TIME_CACHE.get(key);
+        if (hit != null) return hit;
+        String s = DateUtils.getRelativeTimeSpanString(date).toString();
+        TIME_CACHE.put(key, s);
+        return s;
+    }
+
     /** The call-log cursor, with the 250-row cap pushed down into the provider. A
      *  provider that refuses the LIMIT suffix in the sort order throws out of query(),
      *  and the catch below then returned an empty list — so the Recents tab showed
@@ -930,7 +958,7 @@ public class MainActivity extends Activity {
                         String number = num == null ? "" : num;
                         boolean hasName = name != null && !name.isEmpty();
                         String title = hasName ? name : (number.isEmpty() ? "Unknown" : number);
-                        String time = DateUtils.getRelativeTimeSpanString(date).toString();
+                        String time = relativeTime(date);
                         boolean spam = engine.check(number).score >= 60;
 
                         CallRow r = null;
