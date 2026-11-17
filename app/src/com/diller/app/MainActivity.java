@@ -896,20 +896,32 @@ public class MainActivity extends Activity {
      *  changes, so the labels still age precisely as they did before. Bounded, and on the
      *  usual reload the strings it hands back are the same objects the reused CallRows
      *  already hold, so it retains nothing new. */
-    private static final android.util.LruCache<Long, String> TIME_CACHE =
-            new android.util.LruCache<>(512);
+    // A plain HashMap, not an LruCache. The memo is thrown away at every minute
+    // boundary anyway, so it can never hold more than the distinct call dates rendered
+    // inside one minute — at most the 250 recents rows — and the LRU bookkeeping bought
+    // nothing. It did cost something: LruCache is a LinkedHashMap in access order, so
+    // every get() splices the hit entry to the tail of the list (four pointer writes
+    // plus a structural-modification bump) and takes its own lock on top of the lock
+    // this method already holds. queryCalls() asks for 250 labels per reload and the
+    // Recents tab reloads on every resume, so that was a thousand pointless pointer
+    // writes per return to the app. Same keys, same values, same strings handed back.
+    private static final java.util.HashMap<Long, String> TIME_CACHE =
+            new java.util.HashMap<>(512);
     private static long timeCacheMinute = -1L;
 
     private static synchronized String relativeTime(long date) {
         long minute = System.currentTimeMillis() / 60000L;
         if (minute != timeCacheMinute) {
-            TIME_CACHE.evictAll();
+            TIME_CACHE.clear();
             timeCacheMinute = minute;
         }
         Long key = date;
         String hit = TIME_CACHE.get(key);
         if (hit != null) return hit;
         String s = DateUtils.getRelativeTimeSpanString(date).toString();
+        // Defensive cap: the clear above bounds this map to one minute's worth of rows,
+        // but never let a caller with an unbounded date stream grow it without limit.
+        if (TIME_CACHE.size() >= 1024) TIME_CACHE.clear();
         TIME_CACHE.put(key, s);
         return s;
     }
