@@ -923,8 +923,15 @@ public class MainActivity extends Activity {
     // this method already holds. queryCalls() asks for 250 labels per reload and the
     // Recents tab reloads on every resume, so that was a thousand pointless pointer
     // writes per return to the app. Same keys, same values, same strings handed back.
-    private static final java.util.HashMap<Long, String> TIME_CACHE =
-            new java.util.HashMap<>(512);
+    // Keyed on the primitive DATE, not a boxed Long. HashMap<Long, String> allocated a
+    // Long for every get() and every put() in relativeTime() — 250 lookups plus 250
+    // inserts on every recents reload (every resume, every switch back to the tab, every
+    // filter toggle) — purely to key the memo, and every one of those boxes was garbage
+    // the moment the lookup returned. LongSparseArray keeps the dates in a sorted
+    // primitive long[] and binary-searches it, so the same memo costs no allocation per
+    // lookup and still hands back the very same String objects for the same dates.
+    private static final android.util.LongSparseArray<String> TIME_CACHE =
+            new android.util.LongSparseArray<>(512);
     private static long timeCacheMinute = -1L;
 
     private static synchronized String relativeTime(long date) {
@@ -933,14 +940,13 @@ public class MainActivity extends Activity {
             TIME_CACHE.clear();
             timeCacheMinute = minute;
         }
-        Long key = date;
-        String hit = TIME_CACHE.get(key);
+        String hit = TIME_CACHE.get(date);
         if (hit != null) return hit;
         String s = DateUtils.getRelativeTimeSpanString(date).toString();
         // Defensive cap: the clear above bounds this map to one minute's worth of rows,
         // but never let a caller with an unbounded date stream grow it without limit.
         if (TIME_CACHE.size() >= 1024) TIME_CACHE.clear();
-        TIME_CACHE.put(key, s);
+        TIME_CACHE.put(date, s);
         return s;
     }
 
