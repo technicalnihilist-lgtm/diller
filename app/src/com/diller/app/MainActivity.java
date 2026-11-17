@@ -56,6 +56,8 @@ public class MainActivity extends Activity {
     private static final int REQ_DIALER = 12;
     /** Rows the Contacts tab ever keeps; pushed into the provider query as a LIMIT. */
     private static final int CONTACT_ROWS = 500;
+    /** Rows the Recents tab ever keeps; pushed into the provider query as a LIMIT. */
+    private static final int CALL_ROWS = 250;
 
     private static final int WHITE = 0xFFFFFFFF;
     private static final int BLUE = 0xFF0A84FF;
@@ -921,7 +923,7 @@ public class MainActivity extends Activity {
     private Cursor openCallsCursor(String sel, String[] selArgs) {
         try {
             return getContentResolver().query(CallLog.Calls.CONTENT_URI, CALL_COLS,
-                    sel, selArgs, CALL_ORDER + " LIMIT 250");
+                    sel, selArgs, CALL_ORDER + " LIMIT " + CALL_ROWS);
         } catch (Exception e) {
             try {
                 return getContentResolver().query(CallLog.Calls.CONTENT_URI, CALL_COLS,
@@ -933,7 +935,11 @@ public class MainActivity extends Activity {
     }
 
     private List<CallRow> queryCalls(boolean missedOnly, List<CallRow> prev) {
-        List<CallRow> rows = new ArrayList<>();
+        // Sized for the cap this loop already enforces. A default ArrayList starts at ten
+        // slots and grows by halves, so filling 250 rows re-allocated the backing array
+        // nine times and copied roughly 700 references on every reload — and the Recents
+        // tab reloads on every resume, every switch back to it and every filter toggle.
+        List<CallRow> rows = new ArrayList<>(CALL_ROWS);
         if (checkSelfPermission(Manifest.permission.READ_CALL_LOG)
                 == PackageManager.PERMISSION_GRANTED) {
             Cursor cur = null;
@@ -949,7 +955,7 @@ public class MainActivity extends Activity {
                 cur = openCallsCursor(sel, selArgs);
                 if (cur != null) {
                     int i = 0;
-                    while (cur.moveToNext() && rows.size() < 250) {
+                    while (cur.moveToNext() && rows.size() < CALL_ROWS) {
                         long callId = cur.getLong(0);
                         String name = cur.getString(1);
                         String num = cur.getString(2);
@@ -1314,7 +1320,10 @@ public class MainActivity extends Activity {
     }
 
     private List<ContactRow> queryContacts(String f) {
-        List<ContactRow> rows = new ArrayList<>();
+        // Same as queryCalls(): sized for the CONTACT_ROWS cap instead of growing from ten
+        // slots through a dozen re-allocations. This runs on the first open of the
+        // Contacts tab and again on every debounced search keystroke.
+        List<ContactRow> rows = new ArrayList<>(CONTACT_ROWS);
         if (checkSelfPermission(Manifest.permission.READ_CONTACTS)
                 == PackageManager.PERMISSION_GRANTED) {
             Cursor cur = null;
