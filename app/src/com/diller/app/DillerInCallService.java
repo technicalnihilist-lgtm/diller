@@ -77,7 +77,7 @@ public class DillerInCallService extends InCallService {
         //    started for this call, that first getBoolean loads and parses the whole
         //    prefs file (blocklist, AI history) on the thread that is about to start
         //    the call screen, so it sat between the ring and the screen appearing.
-        if (ringing) decideIfAiAgent(call, number);
+        if (ringing) decideAiAnswer(call, number);
 
         // 1) Try to show the activity directly (works when Diller is the default dialer).
         try {
@@ -92,28 +92,29 @@ public class DillerInCallService extends InCallService {
         showCallNotification(number, ringing);
     }
 
-    /** Reads the ai_agent flag on the worker, so the ringing path does no disk I/O. */
-    private void decideIfAiAgent(final Call call, final String number) {
-        DECIDE.execute(new Runnable() {
-            public void run() {
-                boolean on;
-                try {
-                    on = getSharedPreferences("diller", MODE_PRIVATE)
-                            .getBoolean("ai_agent", false);
-                } catch (Exception e) {
-                    return;
-                }
-                if (on) decideAiAnswer(call, number);
-            }
-        });
-    }
-
-    /** Scores the caller off the main thread; only the answer itself hops back.
-     *  Same decision as before, minus the blocking contact lookup on the ringing path. */
+    /** Reads the ai_agent flag and scores the caller on ONE worker task, so the ringing
+     *  path does no disk I/O and no provider round trip. The flag read and the decision
+     *  used to be two separate tasks on this single-thread queue: the first read
+     *  "ai_agent" and, when it was on, submitted the second, which then had to wait for
+     *  the worker to come back round the queue before it could start its PhoneLookup.
+     *  Every incoming call paid that extra hand-off between the ring and the AI
+     *  answering. One task does both in the order they already ran, so the decision
+     *  lands earlier and the queue carries half the work. It also holds the application
+     *  context instead of the service, so a decision still queued after Telecom drops
+     *  the call no longer keeps this service reachable. */
     private void decideAiAnswer(final Call call, final String number) {
         final Context app = getApplicationContext();
         DECIDE.execute(new Runnable() {
             public void run() {
+                try {
+                    // On a process the system started for this call, this first read loads
+                    // and parses the whole prefs file (blocklist, AI history), so it must
+                    // not sit between the ring and the call screen appearing.
+                    if (!app.getSharedPreferences("diller", Context.MODE_PRIVATE)
+                            .getBoolean("ai_agent", false)) return;
+                } catch (Exception e) {
+                    return;
+                }
                 boolean known;
                 String label;
                 int score;
