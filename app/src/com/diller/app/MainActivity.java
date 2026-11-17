@@ -119,6 +119,24 @@ public class MainActivity extends Activity {
     private Runnable searchPending;
     /** Contacts queries run off the UI thread so typing and startup never stall. */
     private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
+
+    /** Hands a job to the I/O queue and tolerates a queue that onDestroy() already shut
+     *  down. requestPerms(), addAiHistory() and refreshAiHistory() each handled that
+     *  rejection inline; the three list/summary loaders did not, so a load submitted
+     *  after the Activity went away threw RejectedExecutionException on the UI thread —
+     *  a crash in a dialer — and left its "loading" flag set, which made every later
+     *  request for that list return early as a duplicate that never completes. Returns
+     *  false when the job was dropped, so the caller can clear its flag; nothing else
+     *  changes, since the Activity the job would have painted is gone. */
+    private boolean submitIo(Runnable job) {
+        try {
+            ioExecutor.execute(job);
+            return true;
+        } catch (RejectedExecutionException e) {
+            return false;
+        }
+    }
+
     /** Bumped per request; a result whose token is stale is dropped. Main thread only. */
     private int contactsToken = 0;
     /** Same idea for the call log, which is now queried off the UI thread too. */
@@ -846,7 +864,7 @@ public class MainActivity extends Activity {
         // rebuilt (see queryCalls). The worker only reads this list; set() replaces the
         // adapter's reference rather than mutating it, so the snapshot stays consistent.
         final List<CallRow> prevRows = recentsAdapter == null ? null : recentsAdapter.items;
-        ioExecutor.execute(new Runnable() {
+        if (!submitIo(new Runnable() {
             public void run() {
                 final List<CallRow> rows = queryCalls(missed, prevRows);
                 runOnUiThread(new Runnable() {
@@ -862,7 +880,7 @@ public class MainActivity extends Activity {
                     }
                 });
             }
-        });
+        })) callsLoading = false;   // queue already shut down: no result is coming
     }
 
     /** The row at a tapped position, or null when a reload replaced the adapter's list
@@ -1312,7 +1330,7 @@ public class MainActivity extends Activity {
         contactsLoading = true;
         contactsLoadingFilter = f;
         final int token = ++contactsToken;
-        ioExecutor.execute(new Runnable() {
+        if (!submitIo(new Runnable() {
             public void run() {
                 final List<ContactRow> rows = queryContacts(f);
                 runOnUiThread(new Runnable() {
@@ -1328,7 +1346,7 @@ public class MainActivity extends Activity {
                     }
                 });
             }
-        });
+        })) contactsLoading = false;   // queue already shut down: no result is coming
     }
 
     private List<ContactRow> queryContacts(String f) {
@@ -2042,7 +2060,7 @@ public class MainActivity extends Activity {
         // so the worker holds the application context, exactly as the AI-history write
         // and the in-call lookup worker already do.
         final Context app = getApplicationContext();
-        ioExecutor.execute(new Runnable() {
+        if (!submitIo(new Runnable() {
             public void run() {
                 final String text = DailySummary.build(app);
                 runOnUiThread(new Runnable() {
@@ -2054,7 +2072,7 @@ public class MainActivity extends Activity {
                     }
                 });
             }
-        });
+        })) summaryLoading = false;   // queue already shut down: no summary is coming
     }
 
     private void showAiSettings() {
