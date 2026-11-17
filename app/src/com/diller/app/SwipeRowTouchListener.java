@@ -33,6 +33,16 @@ public class SwipeRowTouchListener implements View.OnTouchListener {
      *  0 means "no background". */
     private int bgApplied;
 
+    /** Translation currently applied to the row. View.setTranslationX() has no equality
+     *  check: it pushes the value into the render node and invalidates the view even when
+     *  the value is the one already there. A MOVE stream delivers an event for every
+     *  sample the finger produces, and once the drag is past maxSwipe the clamped value
+     *  stops changing — yet each of those events still re-translated and redrew the row
+     *  (and its swipe background) for the whole time the finger stayed out there. Skipping
+     *  the write when the clamped offset is unchanged removes those redraws and changes
+     *  nothing on screen, since the row is already drawn at that exact offset. */
+    private float txApplied;
+
     /** Only touch the row's background when the direction actually changes. */
     private void applyBg(View v, int res) {
         if (bgApplied == res) return;
@@ -56,6 +66,7 @@ public class SwipeRowTouchListener implements View.OnTouchListener {
                 y0 = e.getY();
                 swiping = false;
                 v.setTranslationX(0f);
+                txApplied = 0f;
                 applyBg(v, 0);
                 return false;
 
@@ -73,7 +84,10 @@ public class SwipeRowTouchListener implements View.OnTouchListener {
                     }
                 }
                 float clamped = Math.max(-maxSwipe, Math.min(maxSwipe, dx));
-                v.setTranslationX(clamped);
+                if (clamped != txApplied) {
+                    txApplied = clamped;
+                    v.setTranslationX(clamped);
+                }
                 applyBg(v, clamped > 0 ? bgCall : bgDelete);
                 return true;
             }
@@ -82,6 +96,7 @@ public class SwipeRowTouchListener implements View.OnTouchListener {
             case MotionEvent.ACTION_CANCEL: {
                 if (!swiping) {
                     v.setTranslationX(0f);
+                    txApplied = 0f;
                     applyBg(v, 0);
                     // treat as a tap only if the finger barely moved
                     if (e.getActionMasked() == MotionEvent.ACTION_UP
@@ -107,6 +122,7 @@ public class SwipeRowTouchListener implements View.OnTouchListener {
                             .withEndAction(new Runnable() {
                                 public void run() {
                                     v.setTranslationX(0f);
+                                    txApplied = 0f;
                                     applyBg(v, 0);
                                     if (right) cb.onSwipeRight();
                                     else cb.onSwipeLeft();
@@ -114,6 +130,7 @@ public class SwipeRowTouchListener implements View.OnTouchListener {
                             }).start();
                 } else {
                     v.animate().translationX(0f).setDuration(130).start();
+                    txApplied = 0f;
                     applyBg(v, 0);
                 }
                 return true;
