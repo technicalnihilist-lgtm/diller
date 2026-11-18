@@ -20,6 +20,18 @@ public class Contacts {
             new ConcurrentHashMap<String, String>();
     private static final int CACHE_MAX = 256;
 
+    /** Numbers whose PhoneLookup is in flight right now. One incoming call asks for the
+     *  same name twice at almost the same instant — the AI agent's decision worker
+     *  (DillerInCallService.decideAiAnswer) and the call screen's own lookup worker
+     *  (InCallActivity.bindNumber) both start within a few milliseconds of the ring —
+     *  and while the memo is cold both miss it, so both paid a PhoneLookup round trip
+     *  (disk, often a sync adapter) on the ringing path. The second caller waits on the
+     *  first and reads its answer out of the memo instead. Entries are removed as soon as
+     *  their lookup finishes, so this never holds more than the few numbers actually in
+     *  flight, and a lookup that throws leaves the waiter to query for itself. */
+    private static final ConcurrentHashMap<String, Object> PENDING =
+            new ConcurrentHashMap<String, Object>();
+
     /** Set once per process, when the address-book observer is registered. */
     private static volatile boolean observing;
 
@@ -59,6 +71,25 @@ public class Contacts {
             return hit.isEmpty() ? null : hit;
         }
 
+        // Single flight per number (see PENDING). A caller that arrives while this one is
+        // still querying blocks here instead of issuing the same provider query, then
+        // takes the answer the leader memoised just below.
+        Object lock = new Object();
+        Object leader = PENDING.putIfAbsent(key, lock);
+        if (leader != null) lock = leader;
+        synchronized (lock) {
+            hit = CACHE.get(key);
+            if (hit != null) return hit.isEmpty() ? null : hit;
+            try {
+                return lookupAndMemo(c, key, number);
+            } finally {
+                PENDING.remove(key, lock);
+            }
+        }
+    }
+
+    /** The actual PhoneLookup plus memo store, run under the number's in-flight lock. */
+    private static String lookupAndMemo(Context c, String key, String number) {
         observeAddressBook(c);
         String name = query(c, number);
         // Evict ONE entry at the cap instead of clearing the whole memo. What this map
