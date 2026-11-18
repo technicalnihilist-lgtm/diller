@@ -15,6 +15,25 @@ import java.util.Map;
 /** Builds a plain-language summary of today's calls straight from the call log. */
 public class DailySummary {
 
+    /** The call-log projection never varies, so one shared array serves every build —
+     *  the same treatment CALL_COLS, CONTACT_COLS and LOOKUP_COLS already get on the two
+     *  list queries and the PhoneLookup. build() ran a fresh String[4] through the
+     *  provider on every AI-tab refresh that still showed the placeholder, on the I/O
+     *  thread, purely to describe columns that are always these four. */
+    private static final String[] COLS = {
+            CallLog.Calls.NUMBER, CallLog.Calls.CACHED_NAME,
+            CallLog.Calls.TYPE, CallLog.Calls.DURATION};
+
+    /** Callers sorted by call count, most first. The anonymous Comparator below was a new
+     *  object per build for a comparison that never changes; the int[] pairs it reads are
+     *  the mutable {count, seconds} tallies, so the ordering is the same either way. */
+    private static final Comparator<Map.Entry<String, int[]>> BY_COUNT =
+            new Comparator<Map.Entry<String, int[]>>() {
+                public int compare(Map.Entry<String, int[]> a, Map.Entry<String, int[]> b) {
+                    return b.getValue()[0] - a.getValue()[0];
+                }
+            };
+
     public static String build(Context c) {
         long start = startOfToday();
         Cursor cur = null;
@@ -23,9 +42,7 @@ public class DailySummary {
         long secs = 0;
 
         try {
-            cur = c.getContentResolver().query(CallLog.Calls.CONTENT_URI,
-                    new String[]{CallLog.Calls.NUMBER, CallLog.Calls.CACHED_NAME,
-                            CallLog.Calls.TYPE, CallLog.Calls.DURATION},
+            cur = c.getContentResolver().query(CallLog.Calls.CONTENT_URI, COLS,
                     CallLog.Calls.DATE + ">=?", new String[]{String.valueOf(start)},
                     CallLog.Calls.DATE + " DESC");
             if (cur != null) {
@@ -58,13 +75,12 @@ public class DailySummary {
         if (total == 0) return "Aaj koi call nahi hui.";
 
         List<Map.Entry<String, int[]>> list = new ArrayList<>(byName.entrySet());
-        Collections.sort(list, new Comparator<Map.Entry<String, int[]>>() {
-            public int compare(Map.Entry<String, int[]> a, Map.Entry<String, int[]> b) {
-                return b.getValue()[0] - a.getValue()[0];
-            }
-        });
+        Collections.sort(list, BY_COUNT);
 
-        StringBuilder sb = new StringBuilder();
+        // Pre-sized for the text below (three header lines, then up to three callers).
+        // A default StringBuilder started at 16 chars and re-allocated its backing array
+        // and copied its contents four or five times per build; this one grows not at all.
+        StringBuilder sb = new StringBuilder(192);
         sb.append("Aaj total ").append(total).append(" calls — ")
           .append(out).append(" outgoing, ").append(in).append(" incoming, ")
           .append(missed).append(" missed.\n");
