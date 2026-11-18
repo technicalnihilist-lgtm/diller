@@ -50,6 +50,20 @@ public class SwipeRowTouchListener implements View.OnTouchListener {
         v.setBackgroundResource(res);
     }
 
+    /** Put the row back at rest, but only when a gesture actually left it moved.
+     *  The listener is built per inflated row and txApplied tracks the offset already
+     *  applied, so a plain tap arrives with the row at 0 — and View.setTranslationX()
+     *  has no equality check (see txApplied above), so resetting unconditionally pushed
+     *  a render-node property plus a redraw of the whole row into every ACTION_DOWN and
+     *  every ACTION_UP on every call and contact row, before the tap was even recognised.
+     *  Skipping it when the row is already at rest changes nothing on screen: the row is
+     *  drawn at exactly that offset. */
+    private void resetIfMoved(View v) {
+        if (txApplied == 0f) return;
+        txApplied = 0f;
+        v.setTranslationX(0f);
+    }
+
     public SwipeRowTouchListener(Context c, Callbacks cb, int bgCall, int bgDelete) {
         this.cb = cb;
         this.bgCall = bgCall;
@@ -65,8 +79,7 @@ public class SwipeRowTouchListener implements View.OnTouchListener {
                 x0 = e.getX();
                 y0 = e.getY();
                 swiping = false;
-                v.setTranslationX(0f);
-                txApplied = 0f;
+                resetIfMoved(v);
                 applyBg(v, 0);
                 return false;
 
@@ -95,8 +108,7 @@ public class SwipeRowTouchListener implements View.OnTouchListener {
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL: {
                 if (!swiping) {
-                    v.setTranslationX(0f);
-                    txApplied = 0f;
+                    resetIfMoved(v);
                     applyBg(v, 0);
                     // treat as a tap only if the finger barely moved
                     if (e.getActionMasked() == MotionEvent.ACTION_UP
