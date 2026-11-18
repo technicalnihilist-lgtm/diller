@@ -733,7 +733,7 @@ public class MainActivity extends Activity {
                         // applyBatch goes out to ContactsProvider — disk, and often a sync
                         // adapter — so it runs on the I/O thread; only the toast and the
                         // list refresh hop back. Same treatment the call delete already gets.
-                        ioExecutor.execute(new Runnable() {
+                        Runnable write = new Runnable() {
                             public void run() {
                                 final boolean ok = saveContact(nm, num);
                                 runOnUiThread(new Runnable() {
@@ -749,7 +749,12 @@ public class MainActivity extends Activity {
                                     }
                                 });
                             }
-                        });
+                        };
+                        // Same rejection guard as deleteCall(): the Save dialog can be
+                        // dismissed at the same moment the Activity goes away, and a
+                        // shut-down queue threw RejectedExecutionException on the UI
+                        // thread instead of saving the contact.
+                        if (!submitIo(write)) write.run();
                     }
                 })
                 .setNegativeButton("Cancel", null)
@@ -1198,7 +1203,7 @@ public class MainActivity extends Activity {
     /** The delete is a provider write (disk, possibly a sync adapter), so it runs on the
      *  I/O thread; only the toast and the reload hop back to the UI thread. */
     private void deleteCall(final long id) {
-        ioExecutor.execute(new Runnable() {
+        Runnable write = new Runnable() {
             public void run() {
                 int n = -1;
                 try {
@@ -1216,7 +1221,17 @@ public class MainActivity extends Activity {
                     }
                 });
             }
-        });
+        };
+        // submitIo(), not a bare execute(): onDestroy() shuts this queue down, and
+        // execute() on a shut-down executor throws RejectedExecutionException on the
+        // UI thread. This write is reached from the swipe animation's end action 150 ms
+        // after the gesture, so leaving the app inside that window crashed the dialer.
+        // The three list loaders already went through submitIo() for exactly this
+        // reason; the write paths were missed. A dropped job means the Activity is
+        // already gone, so the single-row delete runs inline instead of being lost, and
+        // the UI hop it posts is skipped by the isFinishing()/isDestroyed() check it
+        // already makes.
+        if (!submitIo(write)) write.run();
     }
 
     private void confirmDeleteContact(final ContactRow row) {
@@ -1233,7 +1248,7 @@ public class MainActivity extends Activity {
     /** Same as deleteCall: the provider write happens off the UI thread. */
     private void deleteContact(final ContactRow row) {
         final long cid = row.contactId;
-        ioExecutor.execute(new Runnable() {
+        Runnable write = new Runnable() {
             public void run() {
                 int n = -1;
                 try {
@@ -1257,7 +1272,10 @@ public class MainActivity extends Activity {
                     }
                 });
             }
-        });
+        };
+        // Same rejection guard as deleteCall(): a left-swipe that lands after onDestroy()
+        // used to throw out of the UI thread and take the process down.
+        if (!submitIo(write)) write.run();
     }
 
     // ---------------- contacts ----------------
